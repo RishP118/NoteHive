@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoteHive</title>
+<link rel="stylesheet" href="software.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+</head>
+<body>
+
+<header>
+    <h1>NoteHive</h1>
+    <div class="header-buttons">
+        <button id="register-btn" onclick="openRegisterModal()" title="Register" >Register</button>
+        <button id="login-btn" onclick="openLoginModal()" title="Login">Login</button>
+        <button id="myTrial" title="Free trial">Start 7 day free trial</button>
+        <button id="mylang" onclick="toggleLanguagePopup()"title="language">🌐</button>
+    </div>
+</header>
+
+<div id="language-popup" class="language-popup-style">
+    <h3>Select Language</h3>
+    <div class="language-list">
+        <a href="#" onclick="selectLanguage('English')">English</a>
+        <a href="#" onclick="selectLanguage('Spanish')">Español (Spanish)</a>
+        <a href="#" onclick="selectLanguage('French')">Français (French)</a>
+        <a href="#" onclick="selectLanguage('German')">Deutsch (German)</a>
+        <a href="#" onclick="selectLanguage('Russian')">Pусский (Russian)</a>
+        <a href="#" onclick="selectLanguage('Chinese')">简体中文 (Simplified Chinese)</a>
+        <a href="#" onclick="selectLanguage('Japanese')">日本語 (Japanese)</a>
+        <a href="#" onclick="selectLanguage('Arabic')">العربية (Arabic)</a>
+        <a href="#" onclick="selectLanguage('Portuguese')">Português (Portuguese)</a>
+        <a href="#" onclick="selectLanguage('Hindi')">हिन्दी (Hindi)</a>
+        <a href="#" onclick="selectLanguage('Korean')">한국어 (Korean)</a>
+        <a href="#" onclick="selectLanguage('Italian')">Italiano (Italian)</a>
+        <a href="#" onclick="selectLanguage('Dutch')">Dutch (Nederlands)</a>
+        <a href="#" onclick="selectLanguage('Turkish')">Turkish (Türkçe)</a>
+        <a href="#" onclick="selectLanguage('Vietnamese')">Vietnamese (Tiếng Việt)</a>
+        <a href="#" onclick="selectLanguage('Indonesian')">Indonesian (Bahasa Indonesia)</a>
+    </div>
+</div>
+
+<div class="intro">
+    <div class="intro-text">
+        <h2>Start managing your notes and collaborative studies!</h2>
+        <p>Subscribe to begin!</p>
+        <p>Register now for 7 day free trial</p>
+    </div>
+    <div class="intro-img">
+      <img src="c:\Users\ssmat\OneDrive\Pictures\OIP.webp" alt="Notes">
+    </div>
+</div>
+
+
+
+<div class="ABOUT">
+    <h1>Welcome To NoteHive!</h1>
+</div>
+
+<div class="feature-section">
+  <h2>Explore Features</h2>
+
+  <div class="slider">
+    <button class="arrow left">&#10094;</button>
+
+    <div class="feature-container">
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/1828/1828925.png" alt="Notes">
+        <h3>Notes</h3>
+        <p>Organize all your notes in one place and sync across devices.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/1828/1828961.png" alt="Tasks">
+        <h3>Tasks</h3>
+        <p>Stay productive with smart to-do lists and reminders.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/4221/4221342.png" alt="Collaboration">
+        <h3>Collaboration</h3>
+        <p>Work together with your team on shared notebooks.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/1250/1250615.png" alt="Meetings">
+        <h3>Meetings</h3>
+        <p>Attach notes to meeting invites and track discussions easily.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/535/535234.png" alt="Calendar">
+        <h3>Calendar</h3>
+        <p>Plan your week and sync your schedule with tasks.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/2997/2997933.png" alt="Reminders">
+        <h3>Reminders</h3>
+        <p>Never miss a deadline with smart alerts and notifications.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/786/786407.png" alt="Cloud Sync">
+        <h3>Cloud Sync</h3>
+        <p>Automatically back up your data safely in the cloud.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="AI Assistant">
+        <h3>AI Assistant</h3>
+        <p>Get suggestions and summaries powered by AI.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/3799/3799829.png" alt="Templates">
+        <h3>Templates</h3>
+        <p>Use customizable templates for meetings, notes, and projects.</p>
+      </div>
+
+      <div class="feature-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/151/151917.png" alt="File Storage">
+        <h3>File Storage</h3>
+        <p>Upload and organize PDFs, images, and documents easily.</p>
+      </div>
+
+    </div>
+
+    <button class="arrow right">&#10095;</button>
+  </div>
+</div>
+
+<div class="about">
+    <div class="about-text">
+         <h1>What is NoteHive?</h1>
+         <p>
+            NoteHive is a dynamic online platform designed to simplify learning and collaboration for students and educators.
+            It allows users to upload, share, and access notes effortlessly, creating a centralized hub for academic resources.
+            With interactive study sessions, discussion forums, and organized content management, NoteHive makes group learning
+            efficient and engaging. Whether preparing for exams, working on projects, or sharing insights, users can connect
+            and learn seamlessly. Experience a smarter way to study, collaborate, and grow with NoteHive.
+         </p>
+    </div>
+    <div class="about-img">
+         <img src="c:\Users\ssmat\OneDrive\Pictures\1000_F_595278130_pm019aWdqNojWHZsWiUcPi3sthitC1Gk (1).jpg" alt="About NoteHive">
+    </div>
+</div>
+
+
+
+
+
+<h1 id="fake">Some of our top feedbacks:</h1>
+
+
+<div class="cont">
+    <div class="review">
+        <p>Ajila Naidu:</p><br>
+        <p>Aisha Verma, Engineering Student
+“NoteHive changed how I study — the collaborative sessions and organized notes saved me hours each week. The upload and search features are super intuitive; I found exactly what I needed in seconds. Highly recommend for group projects!”</p>
+
+    </div>
+    <div class="review">
+        <p>Rohit Patel, College Tutor:</p>
+        <p>“Perfect for tutoring and sharing resources. I can create a study session, share highlights, and get immediate feedback from students. Clean UI, reliable uploads — a must-have for every study group.”</p>
+    </div>
+    <div class="review">
+        <p>Meera Iyer, Final-year CS:</p>
+        <p>“Beautiful, simple, and fast. The trial helped me explore features without commitment and the note-sharing makes exam prep so much easier. Love the collaborative chat — saved our entire semester!”</p>
+    </div>
+
+</div>
+
+<section class="plans-section">
+  <h2>Subscription Plans</h2>
+  <div class="plans-container">
+
+    <div class="plan-card">
+      <h3>Basic Plan</h3>
+      <p class="price">₹199 / month</p>
+      <ul>
+        <li>Access to Notes feature</li>
+        <li>Limited Tasks & Meetings</li>
+        <li>Email Support</li>
+      </ul>
+      <button class="subscribe-btn">Subscribe</button>
+    </div>
+
+    <div class="plan-card popular">
+      <h3>Pro Plan</h3>
+      <p class="price">₹499 / month</p>
+      <ul>
+        <li>All Basic features</li>
+        <li>Unlimited Tasks & Meetings</li>
+        <li>Priority Support</li>
+        <li>Cloud Backup</li>
+      </ul>
+      <button class="subscribe-btn">Subscribe</button>
+    </div>
+
+    <div class="plan-card">
+      <h3>Premium Plan</h3>
+      <p class="price">₹999 / month</p>
+      <ul>
+        <li>All Pro features</li>
+        <li>Team Collaboration</li>
+        <li>Advanced Analytics</li>
+        <li>24/7 VIP Support</li>
+      </ul>
+      <button class="subscribe-btn">Subscribe</button>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-about">
+      <h3>About NoteHive</h3>
+      <p>
+         NoteHive is a collaborative platform that helps students and educators
+         share, upload, and organize notes efficiently. Study smarter, not harder.
+     </p>
+   </div>
+
+    <div class="footer-links">
+      <h3>Quick Links</h3>
+      <ul>
+         <li><a href="#top">Home</a></li>
+    </div>
+
+      <div class="footer-contact">
+      <h3>Contact Us</h3>
+      <p>Email: <a href="mailto:support@notehive.uk">support@notehive.uk</a></p>
+      <p>Phone: +91 98765 43210</p>
+      <div class="socials">
+        <a href="#" title="Instagram">📸</a>
+        <a href="#" title="Twitter">🐦</a>
+        <a href="#" title="LinkedIn">💼</a>
+    </div>
+    </div>
+   </div>
+
+   <div class="footer-bottom">
+    <p>© 2025 NoteHive. All rights reserved.</p>
+  </div>
+</footer>
+
+
+<div id="loginModal" class="modal">
+    <div class="modal-content auth-form-container">
+        <span class="close" onclick="closeLoginModal()">&times;</span>
+        <h2>Welcome Back to NoteHive</h2>
+        <p>Log in to access your notes and study sessions.</p>
+
+        <form onsubmit="event.preventDefault(); loginUser();">
+            <div class="form-group">
+                <label for="login-email">Email / User ID</label>
+                <input type="email" id="login-email" required placeholder="name@example.com">
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" required placeholder="Enter your password">
+            </div>
+            <button type="submit" class="submit-btn login-btn">Log In</button>
+        </form>
+
+        <div class="social-login-divider">OR Log in with:</div>
+
+        <div class="social-login">
+            <button class="social-btn google" onclick="alert('Logging in with Google...')">Google</button>
+            <button class="social-btn microsoft" onclick="alert('Logging in with Microsoft...')">Microsoft</button>
+            <button class="social-btn apple" onclick="alert('Logging in with Apple...')">Apple</button>
+        </div>
+
+        <p class="switch-auth-link">Don't have an account? <a href="#" onclick="switchModalToRegister()">Register here</a></p>
+    </div>
+</div>
+
+<div id="registerModal" class="modal">
+    <div class="modal-content auth-form-container">
+        <span class="close" onclick="closeRegisterModal()">&times;</span>
+        <h2>Create Your NoteHive Account</h2>
+        <p>Join NoteHive for free and start your 7-day trial!</p>
+
+        <form onsubmit="event.preventDefault(); registerUser();">
+            <div class="form-group">
+                <label for="register-name">Full Name</label>
+                <input type="text" id="register-name" required placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label for="register-email">Email</label>
+                <input type="email" id="register-email" required placeholder="name@example.com">
+            </div>
+            <div class="form-group">
+                <label for="register-password">Password</label>
+                <input type="password" id="register-password" required placeholder="Minimum 8 characters">
+            </div>
+            <button type="submit" class="submit-btn register-btn">Register Account</button>
+        </form>
+
+        <div class="social-login-divider">OR Register with:</div>
+
+        <div class="social-login">
+            <button class="social-btn google" onclick="alert('Registering with Google...')">Google</button>
+            <button class="social-btn microsoft" onclick="alert('Registering with Microsoft...')">Microsoft</button>
+            <button class="social-btn apple" onclick="alert('Registering with Apple...')">Apple</button>
+        </div>
+
+        <p class="switch-auth-link">Already have an account? <a href="#" onclick="switchModalToLogin()">Log in here</a></p>
+    </div>
+</div>
+
+<div id="joinSessionModal" class="modal">
+    <div class="modal-content session-modal-content">
+        <span class="close" onclick="closeJoinSessionModal()">&times;</span>
+        <h2 class="session-modal-title">Join a Study Session</h2>
+        <p class="session-modal-subtitle">Enter the session ID or link provided by your collaborator.</p>
+        <div class="join-form">
+            <div class="form-group">
+                <label for="session-id">Session ID or Link</label>
+                <input type="text" id="session-id" placeholder="e.g., 987 654 3210" required>
+            </div>
+            <div class="form-group">
+                <label for="your-name">Your Name</label>
+                <input type="text" id="your-name" placeholder="Your display name" required>
+            </div>
+            <button class="mybtn join-btn-modal" onclick="joinSession()">Join Session</button>
+        </div>
+        <p class="session-modal-tip">Note: You must be logged in to join.</p>
+    </div>
+</div>
+
+<div id="createSessionModal" class="modal">
+    <div class="modal-content session-modal-content">
+        <span class="close" onclick="closeCreateSessionModal()">&times;</span>
+        <h2 class="session-modal-title">Create a New Study Session</h2>
+        <p class="session-modal-subtitle">Start an instant meeting or schedule it for later.</p>
+        <div class="create-options">
+            <div class="form-group">
+                <label for="session-topic">Topic / Subject</label>
+                <input type="text" id="session-topic" placeholder="e.g., Quantum Physics Review" required>
+            </div>
+            <button class="mybtn create-btn-lg" onclick="startInstantSession()">Start Session Now</button>
+            <button class="mybtn create-btn-alt" onclick="scheduleSession()">Schedule for Later</button>
+        </div>
+    </div>
+</div>
+
+<div id="shareNotesModal" class="modal">
+    <div class="modal-content auth-form-container"> 
+        <span class="close" onclick="closeShareNotesModal()">&times;</span>
+        <h2>Share Notes</h2>
+        <form onsubmit="event.preventDefault(); shareNotes();">
+            <div class="form-group">
+                <label for="note-select">Select Note to Share</label>
+                <select id="note-select" required>
+                    <option value="">-- Choose a Note --</option>
+                    <option value="note1">Calculus Chapter 3 Summary</option>
+                    <option value="note2">History Exam Flashcards</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="share-target">Share with</label>
+                <input type="text" id="share-target" placeholder="User ID, Group Name, or Email" required>
+            </div>
+            <div class="form-group">
+                <label>Permissions</label>
+                <label><input type="radio" name="permission" value="view" checked> View Only</label>
+                <label><input type="radio" name="permission" value="edit"> View and Edit</label>
+            </div>
+            <button type="submit" class="submit-btn share-btn">Send Share Link</button>
+        </form>
+    </div>
+</div>
+
+<div id="chatInterfaceModal" class="modal">
+    <div class="modal-content chat-modal-content">
+        <span class="close" onclick="closeChatInterfaceModal()">&times;</span>
+        <h2><span class="chat-icon">💬</span> Collaborative Chat</h2>
+        <div class="chat-window">
+            <div class="message incoming"><span>[14:01] Aisha:</span> Has anyone finished the Chapter 5 notes?</div>
+            <div class="message outgoing"><span>[14:03] You:</span> I have a draft! Check the 'Shared' folder.</div>
+            <div class="message incoming"><span>[14:05] Rohit:</span> Awesome, thanks! Joining the session now.</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Type your message...">
+            <button class="mybtn send-btn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</div>
+
+<div id="uploadModal" class="modal">
+  <div class="modal-content auth-form-container">
+    <span class="close" onclick="closeUploadModal()">&times;</span>
+    <h2>Upload Your Notes</h2>
+    <form id="uploadForm" onsubmit="uploadNotes(event)">
+      <div class="form-group">
+        <label for="title">Title:</label>
+        <input type="text" id="title" placeholder="Enter title" required>
+      </div>
+      <div class="form-group">
+        <label for="subject">Subject:</label>
+        <input type="text" id="subject" placeholder="Enter subject" required>
+      </div>
+      <div class="form-group">
+        <label for="description">Description:</label>
+        <textarea id="description" rows="3" placeholder="Enter description"></textarea>
+      </div>
+
+      <!-- ✅ New Labels Section Added -->
+      <div class="form-group">
+        <label for="labels">Labels / Tags:</label>
+        <input type="text" id="labelInput" placeholder="Type a label and press Enter">
+        <div id="labelPreview" class="label-preview"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="fileUpload">Choose File:</label>
+        <input type="file" id="fileUpload" required>
+      </div>
+
+      <button type="submit" class="submit-btn">Upload Notes</button>
+    </form>
+  </div>
+</div>
+
+</div>
+
+
+
+
+<script src="software.js"></script>
+</body>
+</html>
+
+
+
