@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NoteHive — Scheduler</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --card:#15161a; --ink:#f3f4f6; --muted:#a3a6ad; --line:#272a30;
+      --blue:#3b82f6; --green:#10b981; --red:#ef4444; --amber:#f59e0b;
+      --r:18px; --shadow:0 12px 32px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{text-decoration:none;color:inherit}
+    .top{position:sticky;top:0;z-index:10;background:#0b0c10cc;color:#fff;backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #111827}
+    .top-inner{max-width:900px;margin:auto;padding:10px 20px;display:flex;align-items:center;gap:12px}
+    .logo{width:32px;height:32px;border-radius:10px;background:var(--amber);display:grid;place-items:center;color:#111;font-weight:800}
+    .right{margin-left:auto;display:flex;gap:8px}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:#1b1d23;color:var(--ink)}
+    .btn i{width:18px;height:18px}
+    .btn.primary{background:var(--blue);border-color:transparent}
+    .btn.red{background:var(--red);border-color:transparent}
+    .wrap{max-width:900px;margin:18px auto;padding:0 20px;display:grid;gap:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+    .form{display:grid;gap:10px}
+    .input{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:#0f1115;color:var(--ink)}
+    .row{display:flex;gap:10px}
+    .list{display:grid;gap:10px}
+    .item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px;background:#20232a}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="logo">NH</div>
+      <div>Scheduler</div>
+      <div class="right">
+        <a class="btn" href="index.html"><i data-feather="arrow-left"></i> Back</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>Create Class</h2>
+      <div class="form">
+        <input class="input" id="title" placeholder="Class title (e.g., OS – CPU Scheduling)"/>
+        <div class="row">
+          <input type="date" class="input" id="date" style="flex:1">
+          <input type="time" class="input" id="time" style="flex:1">
+        </div>
+        <div class="row" style="align-items:center">
+          <label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="net-stable" checked> Network stable?</label>
+          <span style="flex:1"></span>
+          <button class="btn primary" id="create"><i data-feather="calendar"></i> Schedule</button>
+        </div>
+        <div id="msg" class="muted"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Upcoming Classes</h2>
+      <div id="list" class="list"></div>
+      <div class="muted">Items persist in your browser.</div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    feather.replace();
+    const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
+    const key="notehive.schedule";
+
+    function getAll(){ try{return JSON.parse(localStorage.getItem(key)||"[]")}catch{return []} }
+    function setAll(v){ localStorage.setItem(key, JSON.stringify(v)); }
+    function render(){
+      const list=$("#list"); list.innerHTML="";
+      const arr=getAll();
+      if(!arr.length){ list.innerHTML = `<div class="muted">No classes scheduled yet.</div>`; return; }
+      arr.forEach((it,idx)=>{
+        const row=document.createElement("div");
+        row.className="item";
+        row.innerHTML=`<div><strong>${it.title}</strong><div class="muted">${it.date} • ${it.time}</div></div>
+                       <div style="display:flex;gap:8px"><button class="btn red" data-del="${idx}"><i data-feather="trash-2"></i> Delete</button></div>`;
+        list.appendChild(row);
+      });
+      feather.replace();
+    }
+
+    $("#create").addEventListener("click",()=>{
+      const t=$("#title").value.trim(), d=$("#date").value, tm=$("#time").value;
+      if(!t || !d || !tm){ $("#msg").textContent="Fill in title, date and time."; $("#msg").style.color="#f97316"; return; }
+      if($("#net-stable").checked){
+        const arr=getAll(); arr.push({title:t,date:d,time:tm}); setAll(arr);
+        $("#msg").textContent="Meeting scheduled successfully. Invitations sent."; $("#msg").style.color="#22c55e";
+        $("#title").value=""; $("#date").value=""; $("#time").value="";
+        render();
+      } else {
+        $("#msg").textContent="Network unstable. Draft saved locally. Try again when stable."; $("#msg").style.color="#f97316";
+      }
+    });
+
+    $("#list").addEventListener("click",(e)=>{
+      const btn=e.target.closest("button"); if(!btn) return;
+      if(btn.dataset.del){
+        const idx=+btn.dataset.del; const arr=getAll(); arr.splice(idx,1); setAll(arr); render();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

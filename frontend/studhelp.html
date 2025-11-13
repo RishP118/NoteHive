@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NoteHive — Help & FAQs (Student)</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --panel:#15161a; --ink:#f3f4f6; --muted:#a3a6ad; --line:#272a30;
+      --green:#10b981; --amber:#f59e0b;
+      --r:18px; --shadow:0 12px 32px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{text-decoration:none;color:inherit}
+
+    .top{position:sticky;top:0;z-index:10;background:#0b0c10cc;color:#fff;backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #111827}
+    .top-inner{max-width:900px;margin:auto;padding:10px 20px;display:flex;align-items:center;gap:12px}
+    .logo{width:32px;height:32px;border-radius:10px;background:var(--amber);display:grid;place-items:center;color:#111;font-weight:800}
+    .right{margin-left:auto}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:#1b1d23;color:#e5e7eb}
+    .btn.green{background:var(--green);border-color:transparent}
+
+    .wrap{max-width:900px;margin:18px auto;padding:0 20px;display:grid;gap:14px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+    .muted{color:var(--muted)}
+
+    details{border:1px solid var(--line);padding:12px;border-radius:12px;background:#20232a}
+    summary{cursor:pointer;font-weight:600}
+    summary::marker{color:#93c5fd}
+    .search{display:flex;gap:8px}
+    .input{flex:1;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:#0f1115;color:var(--ink)}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="logo">NH</div>
+      <div>Help & FAQs — Student</div>
+      <div class="right">
+        <a class="btn" href="index_stud.html"><i data-feather="arrow-left"></i> Back to Dashboard</a>
+        <a class="btn green" href="#contact"><i data-feather="mail"></i> Contact support</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <h2>Getting Started</h2>
+      <p class="muted">Welcome to <strong>NoteHive Student Dashboard</strong>.  
+      Here you can upload your notes, search and download shared materials, and join collaborative study sessions.</p>
+      <div class="search" style="margin-top:8px">
+        <input id="faq-search" class="input" placeholder="Search FAQs… (e.g., upload, study session, login)"/>
+      </div>
+    </section>
+
+    <section class="panel" id="faqs">
+      <h3>Frequently Asked Questions</h3>
+      <div id="faq-list" style="display:grid;gap:10px;margin-top:8px">
+
+        <details data-tags="register login email verification">
+          <summary>How do I register and log in?</summary>
+          <p>Click <em>Sign In</em> on the top-right of the dashboard.  
+          Enter your username and password, then verify your email if prompted.  
+          Once logged in, your session will stay active until you log out.</p>
+        </details>
+
+        <details data-tags="upload notes pdf pptx docx">
+          <summary>How can I upload my notes?</summary>
+          <p>On the main dashboard, scroll to the <em>Upload Notes</em> section.  
+          Choose your file(s), enter a title and description, and select the appropriate subject.  
+          Then click <strong>Upload</strong> to save it. Supported file types: PDF, PPTX, DOCX.</p>
+        </details>
+
+        <details data-tags="search download notes subject keyword">
+          <summary>How do I search and download notes?</summary>
+          <p>Use the search bar at the top or the <em>Search Notes</em> section.  
+          Enter keywords or subjects, then click on any result to view or download the note.</p>
+        </details>
+
+        <details data-tags="study session join create collaboration">
+          <summary>How do study sessions work?</summary>
+          <p>Go to the <em>Study Session</em> page from the dashboard.  
+          You can <strong>create</strong> a new session or <strong>join</strong> one using a session code.  
+          During a session, students can chat, share notes, and collaborate in real time.</p>
+        </details>
+
+        <details data-tags="logout account end session">
+          <summary>How do I log out?</summary>
+          <p>Click the <strong>Logout</strong> button on the top or bottom of the dashboard.  
+          This will securely end your session and return you to the login state.</p>
+        </details>
+
+        <details data-tags="support contact help email">
+          <summary>How can I get help or report an issue?</summary>
+          <p>Scroll down to the <em>Contact Support</em> section below and send an email to  
+          <a href="mailto:support@notehive.example">support@notehive.example</a> describing your issue or feedback.</p>
+        </details>
+
+      </div>
+    </section>
+
+    <section class="panel" id="contact">
+      <h3>Contact Support</h3>
+      <p class="muted">Need more help? Email us at  
+      <a href="mailto:support@notehive.example">support@notehive.example</a> or reach out through your class coordinator.</p>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    feather.replace();
+    // FAQ filter
+    const search = document.getElementById('faq-search');
+    const items = [...document.querySelectorAll('#faq-list details')];
+    search.addEventListener('input', ()=>{
+      const q = search.value.trim().toLowerCase();
+      items.forEach(d=>{
+        const text = (d.textContent||"").toLowerCase();
+        const tags = (d.dataset.tags||"").toLowerCase();
+        d.style.display = (!q || text.includes(q) || tags.includes(q)) ? "" : "none";
+      });
+    });
+  </script>
+</body>
+</html>

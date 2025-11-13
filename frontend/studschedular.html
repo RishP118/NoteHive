@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NoteHive — Class Schedule (Student)</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --card:#15161a; --ink:#f3f4f6; --muted:#a3a6ad; --line:#272a30;
+      --blue:#3b82f6; --green:#10b981; --amber:#f59e0b;
+      --r:18px; --shadow:0 12px 32px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{text-decoration:none;color:inherit}
+    .top{position:sticky;top:0;z-index:10;background:#0b0c10cc;color:#fff;backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #111827}
+    .top-inner{max-width:900px;margin:auto;padding:10px 20px;display:flex;align-items:center;gap:12px}
+    .logo{width:32px;height:32px;border-radius:10px;background:var(--amber);display:grid;place-items:center;color:#111;font-weight:800}
+    .right{margin-left:auto;display:flex;gap:8px}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:#1b1d23;color:var(--ink)}
+    .btn i{width:18px;height:18px}
+    .btn.green{background:var(--green);border-color:transparent}
+
+    .wrap{max-width:900px;margin:18px auto;padding:0 20px;display:grid;gap:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+    .list{display:grid;gap:10px}
+    .item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px;background:#20232a}
+    .muted{color:var(--muted)}
+    footer{border-top:1px solid #111827;background:#0b0c10;margin-top:18px;color:#e5e7eb}
+    .foot{display:flex;align-items:center;justify-content:space-between;padding:14px 0;font-size:12px;max-width:960px;margin:auto}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="logo">NH</div>
+      <div>Class Schedule — Student</div>
+      <div class="right">
+        <a class="btn" href="index_stud.html"><i data-feather="arrow-left"></i> Back</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>Upcoming Classes</h2>
+      <div id="list" class="list"></div>
+      <div class="muted">Schedule displayed from teacher updates.</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot">
+      <span>© <span id="year"></span> NoteHive. All rights reserved.</span>
+      <span class="muted">Student Scheduler</span>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    feather.replace();
+    const $=s=>document.querySelector(s);
+    const key="notehive.schedule";
+
+    function getAll(){ try{return JSON.parse(localStorage.getItem(key)||"[]")}catch{return []} }
+
+    function render(){
+      const list=$("#list"); list.innerHTML="";
+      const arr=getAll();
+      if(!arr.length){
+        list.innerHTML=`<div class="muted">No classes available yet. Please check back later.</div>`;
+        return;
+      }
+      arr.forEach(it=>{
+        const row=document.createElement("div");
+        row.className="item";
+        row.innerHTML=`<div><strong>${it.title}</strong><div class="muted">${it.date} • ${it.time}</div></div>
+                       <button class="btn green"><i data-feather="play-circle"></i> Join</button>`;
+        list.appendChild(row);
+      });
+      feather.replace();
+    }
+
+    $("#year").textContent=new Date().getFullYear();
+    render();
+  </script>
+</body>
+</html>

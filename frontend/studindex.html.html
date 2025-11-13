@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>NoteHive – Student Dashboard</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --card:#15161a; --ink:#f3f4f6; --muted:#a3a6ad; --line:#272a30;
+      --blue:#3b82f6; --green:#10b981; --red:#ef4444; --amber:#f59e0b;
+      --ok:#22c55e; --warn:#f97316;
+      --r:18px; --shadow:0 10px 30px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{color:inherit;text-decoration:none}
+    button{cursor:pointer}
+    .container{max-width:1180px;margin-inline:auto;padding:0 20px}
+
+    /* Top Nav (dark) */
+    .nav{position:sticky;top:0;z-index:50;background:rgba(21,22,26,.92);backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #111827}
+    .nav-inner{height:64px;display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:36px;height:36px;border-radius:12px;background:var(--amber);display:grid;place-items:center;color:#111;font-weight:800}
+    .role{padding:.22rem .6rem;border:1px solid #374151;border-radius:999px;color:#cbd5e1;background:#111827;font-size:12px}
+    .search{position:relative;flex:1;max-width:560px;margin:0 16px;display:none}
+    .search input{width:100%;height:38px;border-radius:999px;border:1px solid #374151;padding:0 40px;background:#111827;color:#e5e7eb}
+    .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.7}
+    .nav-actions{display:flex;align-items:center;gap:10px}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:#1b1d23;color:var(--ink)}
+    .btn i{width:18px;height:18px}
+    .btn.ghost{background:transparent;border-color:#374151}
+    .btn-blue{background:var(--blue);border-color:transparent}
+    .btn-green{background:var(--green);border-color:transparent}
+    .btn-red{background:var(--red);border-color:transparent}
+
+    /* Cards & sections */
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+    .section{padding:22px 0}
+    .muted{color:var(--muted)}
+
+    /* Hero */
+    .hero{padding:24px 0}
+    .hero-card{padding:20px}
+    .hero-top{display:flex;flex-direction:column;gap:12px}
+    .hero-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#1a2433;color:#93c5fd;font-weight:600;font-size:12px;border:1px solid #1f2d44}
+    .primary{background:var(--blue);color:#fff;border-color:transparent}
+
+    /* Quick actions */
+    .quick-grid{margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .qa{border:1px solid var(--line);border-radius:14px;padding:14px;background:#20232a;display:flex;gap:10px;align-items:center;transition:box-shadow .2s, transform .1s;cursor:pointer}
+    .qa:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+    .qa-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:#2b3038}
+    .qa-icon i{width:20px;height:20px}
+
+    /* Two-col rows */
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+    /* Forms */
+    .form{display:grid;gap:10px}
+    .input,.select,textarea{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:#0f1115;color:var(--ink)}
+    textarea{min-height:84px;resize:vertical}
+
+    /* Tabs */
+    .tabs{padding:14px}
+    .tab-list{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .tab-btn{flex:1;padding:10px;background:#1b1f27;border:0;border-right:1px solid var(--line);color:#e5e7eb;cursor:pointer}
+    .tab-btn.active{background:#232833;font-weight:600}
+    .tab-panels{margin-top:12px}
+    .panel{display:none}
+    .panel.active{display:block}
+
+    /* Lists */
+    .list{display:grid;gap:10px}
+    .list-row{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:10px;background:#20232a}
+    .list-row .btn{height:34px}
+
+    /* Footer */
+    footer{border-top:1px solid #111827;background:#0b0c10;margin-top:8px;color:#e5e7eb}
+    .foot{display:flex;align-items:center;justify-content:space-between;padding:14px 0;font-size:12px}
+
+    /* Modal */
+    .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100}
+    .modal{width:min(520px,92vw);background:#0f1115;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);color:#e5e7eb}
+    .modal-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+    .modal-b{padding:16px}
+    .modal-f{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+
+    /* Responsive */
+    @media (min-width:900px){.search{display:block}}
+    @media (max-width:1024px){.quick-grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}}
+    @media (max-width:640px){.quick-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="logo">NH</div>
+        <strong>NoteHive</strong>
+        <span class="role">Student</span>
+      </div>
+      <div class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input class="input" type="text" placeholder="Search notes, courses, tags…" id="global-search"/>
+      </div>
+      <div class="nav-actions">
+        <button class="btn ghost" title="Notifications"><i data-feather="bell"></i></button>
+        <button class="btn btn-blue" id="btn-signin"><i data-feather="log-in"></i> Sign in</button>
+        <a class="btn btn-green" id="btn-help" href="help.html"><i data-feather="help-circle"></i> Help</a>
+        <button class="btn btn-red" id="btn-logout"><i data-feather="log-out"></i> Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="card hero-card">
+        <div class="hero-top">
+          <div>
+            <h1>Welcome to NoteHive</h1>
+            <div class="muted">Student dashboard – upload notes, search resources, and join study sessions.</div>
+          </div>
+          <div class="hero-actions">
+            <span class="pill" id="ver-status"><i data-feather="check-circle"></i> Not Verified</span>
+            <a class="btn primary" id="btn-session" href="session.html"><i data-feather="users"></i> Study Sessions</a>
+          </div>
+        </div>
+
+        <div class="quick-grid">
+          <div class="qa" id="qa-upload">
+            <div class="qa-icon"><i data-feather="upload"></i></div>
+            <div><div><strong>Upload Notes</strong></div><div class="muted">Share PDF / PPTX / DOCX with classmates</div></div>
+          </div>
+
+          <a class="qa" id="qa-search" href="#search">
+            <div class="qa-icon"><i data-feather="search"></i></div>
+            <div><div><strong>Search Notes</strong></div><div class="muted">Keyword / Subject / Tags</div></div>
+          </a>
+
+          <a class="qa" id="qa-session-link" href="session.html">
+            <div class="qa-icon"><i data-feather="clock"></i></div>
+            <div><div><strong>Join/Create Session</strong></div><div class="muted">Collaborate & auto-save notes</div></div>
+          </a>
+
+          <a class="qa" id="qa-announce" href="#uploads">
+            <div class="qa-icon"><i data-feather="speaker"></i></div>
+            <div><div><strong>Announcements</strong></div><div class="muted">Course updates & notices</div></div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTIONS -->
+  <section class="section">
+    <div class="container row">
+
+      <!-- Upload Notes -->
+      <div class="card" id="upload">
+        <div style="padding:16px 16px 0 16px">
+          <h2>Upload Notes</h2>
+          <div class="muted">Select file(s), set title, choose subject, add description. Files validated client-side.</div>
+        </div>
+        <div style="padding:16px" class="form">
+          <input type="file" id="file-input" class="input" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.png,.jpg,.jpeg,.txt"/>
+          <input type="text" id="title-input" class="input" placeholder="Title (e.g., Week 3 - OS)"/>
+          <select id="subject-select" class="select">
+            <option>Data Structures</option>
+            <option>Operating Systems</option>
+            <option>DBMS</option>
+            <option>Computer Networks</option>
+            <option>Object-Oriented Programming (Java)</option>
+          </select>
+          <textarea id="desc-input" placeholder="Short description…" class="input"></textarea>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn primary" id="btn-upload"><i data-feather="arrow-up-circle"></i> Upload</button>
+            <span class="muted">Files validated → Saved locally (demo) → Visible in search</span>
+          </div>
+          <div id="upload-msg" class="muted"></div>
+        </div>
+      </div>
+
+      <!-- Search Notes -->
+      <div class="card" id="search">
+        <div style="padding:16px 16px 0 16px">
+          <h2>Search Notes</h2><div class="muted">Enter keyword, subject, or tag. Click results to download/view.</div>
+        </div>
+        <div style="padding:16px" class="form">
+          <div style="display:flex;gap:8px">
+            <input id="s-query" class="input" placeholder="Keyword or tag"/>
+            <select id="s-subject" class="select" style="width:220px">
+              <option value="">All subjects</option>
+              <option>Data Structures</option>
+              <option>Operating Systems</option>
+              <option>DBMS</option>
+              <option>Computer Networks</option>
+              <option>Object-Oriented Programming (Java)</option>
+            </select>
+            <button class="btn" id="btn-search"><i data-feather="search"></i> Search</button>
+          </div>
+
+          <div id="search-status" class="muted" style="margin-top:10px"></div>
+
+          <div id="results" class="list" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <!-- Study Session (shortcut) -->
+      <div class="card">
+        <div style="padding:16px 16px 0 16px">
+          <h2>Study Session</h2><div class="muted">Create or join collaborative sessions. Notes auto-saved when you end a session.</div>
+        </div>
+        <div style="padding:16px">
+          <a class="btn primary" href="session.html"><i data-feather="users"></i> Open Study Session</a>
+        </div>
+      </div>
+
+      <!-- Uploaded Notes & Announcements -->
+      <div class="card" id="uploads">
+        <div style="padding:16px 16px 0 16px">
+          <h2>Uploaded Notes & Announcements</h2><div class="muted">Browse notes shared by classmates and instructors.</div>
+        </div>
+        <div style="padding:16px" class="list" id="notes-list">
+          <!-- dynamic list -->
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <div class="container foot">
+      <span>© <span id="year"></span> NoteHive. All rights reserved.</span>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a class="btn btn-green" href="help.html"><i data-feather="help-circle"></i> Help</a>
+        <button class="btn btn-red" id="btn-logout-foot"><i data-feather="log-out"></i> Logout</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Reusable Modal -->
+  <div class="backdrop" id="backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-h"><strong id="modal-title">Modal</strong><button class="btn ghost" id="modal-close">✕</button></div>
+      <div class="modal-b" id="modal-body"></div>
+      <div class="modal-f" id="modal-foot"></div>
+    </div>
+  </div>
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <script>
+    /* ---------- helpers ---------- */
+    const $ = s=>document.querySelector(s);
+    const $$ = s=>[...document.querySelectorAll(s)];
+    feather.replace();
+
+    // year
+    $("#year").textContent = new Date().getFullYear();
+
+    /* ---------- Auth & Verification (simulated) ---------- */
+    const authKey = "notehive.auth.student";
+    function getAuth(){ try{return JSON.parse(localStorage.getItem(authKey)||"null")}catch{return null} }
+    function setAuth(v){ localStorage.setItem(authKey, JSON.stringify(v)); renderAuth(); }
+    function clearAuth(){ localStorage.removeItem(authKey); renderAuth(); }
+
+    function renderAuth(){
+      const a = getAuth();
+      const btn = $("#btn-signin");
+      const ver = $("#ver-status");
+      const out1 = $("#btn-logout"), out2 = $("#btn-logout-foot");
+      if(a){
+        btn.innerHTML = `<i data-feather="user"></i> ${a.username}`;
+        btn.classList.remove("btn-blue"); btn.classList.add("ghost");
+        feather.replace();
+        out1.disabled = false; out2.disabled = false;
+        if(a.verified){
+          ver.innerHTML = '<i data-feather="check-circle"></i> Verified';
+          ver.style.background = "#072f1b"; ver.style.color = "#93f7c5";
+        } else {
+          ver.innerHTML = '<i data-feather="alert-circle"></i> Verify Email';
+          ver.style.background = "#2a1b12"; ver.style.color = "var(--amber)";
+        }
+      } else {
+        btn.innerHTML = `<i data-feather="log-in"></i> Sign in`;
+        btn.classList.add("btn-blue"); btn.classList.remove("ghost");
+        feather.replace();
+        out1.disabled = true; out2.disabled = true;
+        ver.innerHTML = '<i data-feather="alert-circle"></i> Not Signed In';
+        ver.style.background = "transparent"; ver.style.color = "var(--muted)";
+      }
+    }
+
+    // Sign in / Register modal
+    $("#btn-signin").addEventListener("click", ()=>{
+      const a = getAuth();
+      if(a){
+        // show small profile modal with sign out and verify option
+        openModal("Profile", `
+          <div class="form">
+            <div><strong>${a.username}</strong></div>
+            <div class="muted">Email: ${a.email || "—"}</div>
+            <div style="margin-top:8px">${a.verified ? '<div class="muted">Email verified ✅</div>' : '<div class="muted">Email not verified</div>'}</div>
+          </div>
+        `, `
+          <button class="btn" id="pm-close">Close</button>
+          ${a.verified ? '' : '<button class="btn btn-blue" id="pm-verify">Resend verification</button>'}
+          <button class="btn btn-red" id="pm-logout">Sign out</button>
+        `);
+        $("#pm-close").onclick = closeModal;
+        $("#pm-logout").onclick = ()=>{ clearAuth(); closeModal(); alert("Signed out"); };
+        if(!a.verified){
+          $("#pm-verify").onclick = ()=>{ alert("Verification email (simulated) sent. Click Verify in the next modal."); closeModal(); openVerifyModal(); };
+        }
+        return;
+      }
+
+      // Open sign in / register modal
+      openModal("Sign in or Register", `
+        <div class="form">
+          <label>Username
+            <input class="input" id="si-user" placeholder="e.g., student_anna"/>
+          </label>
+          <label>Email
+            <input class="input" id="si-email" type="email" placeholder="you@example.com"/>
+          </label>
+          <label>Password
+            <input class="input" id="si-pass" type="password" placeholder="••••••••"/>
+          </label>
+          <label class="muted"><input type="checkbox" id="si-remember"> Keep me signed in</label>
+        </div>
+      `, `
+        <button class="btn" id="si-cancel">Cancel</button>
+        <button class="btn btn-blue" id="si-go">Register / Sign in</button>
+      `);
+      $("#si-cancel").onclick = closeModal;
+      $("#si-go").onclick = ()=>{
+        const u = ($("#si-user").value||"").trim();
+        const e = ($("#si-email").value||"").trim();
+        const p = ($("#si-pass").value||"").trim();
+        if(!u || !e || !p){ alert("Please complete all fields."); return; }
+        setAuth({ username:u, email:e, verified:false, remember: !!$("#si-remember").checked });
+        closeModal();
+        openVerifyModal();
+      };
+    });
+
+    function openVerifyModal(){
+      openModal("Email Verification", `
+        <div class="form">
+          <div class="muted">A verification code was sent to your (simulated) email. Enter <strong>123456</strong> to verify (demo).</div>
+          <input class="input" id="verify-code" placeholder="Enter verification code"/>
+        </div>
+      `, `<button class="btn" id="v-cancel">Cancel</button><button class="btn btn-blue" id="v-go">Verify</button>`);
+      $("#v-cancel").onclick = closeModal;
+      $("#v-go").onclick = ()=>{
+        const code = ($("#verify-code").value||"").trim();
+        if(code === "123456"){
+          const a = getAuth(); if(!a) return alert("No account found.");
+          a.verified = true; setAuth(a);
+          closeModal();
+          alert("Email verified (simulated). Thank you!");
+        } else {
+          alert("Incorrect code. Try 123456 (demo).");
+        }
+      };
+    }
+
+    $("#btn-logout").addEventListener("click", ()=>{ clearAuth(); alert("Logged out."); });
+    $("#btn-logout-foot").addEventListener("click", ()=>{ clearAuth(); alert("Logged out."); });
+
+    /* ---------- Modal helpers ---------- */
+    const backdrop = $("#backdrop"), modalBody = $("#modal-body"), modalFoot = $("#modal-foot"), modalTitle = $("#modal-title");
+    function openModal(title, bodyHTML, footHTML){
+      modalTitle.textContent = title;
+      modalBody.innerHTML = bodyHTML;
+      modalFoot.innerHTML = footHTML || "";
+      backdrop.style.display = "flex";
+      setTimeout(()=>feather.replace(), 0);
+      setTimeout(()=>{ const f = modalBody.querySelector("input, textarea, select, button"); f && f.focus(); }, 60);
+    }
+    function closeModal(){ backdrop.style.display = "none"; }
+    $("#modal-close").addEventListener("click", closeModal);
+    backdrop.addEventListener("click", e=>{ if(e.target === backdrop) closeModal(); });
+
+    /* ---------- Notes storage & upload ---------- */
+    const uploadsKey = "notehive.student.uploads";
+    function getUploads(){ try{return JSON.parse(localStorage.getItem(uploadsKey)||"[]")}catch{return []} }
+    function setUploads(arr){ localStorage.setItem(uploadsKey, JSON.stringify(arr)); }
+
+    const MAX_SIZE = 12 * 1024 * 1024; // 12 MB per file
+    const ALLOWED = ['application/pdf','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/png','image/jpeg','text/plain'];
+
+    $("#btn-upload").addEventListener("click", ()=>{
+      const files = $("#file-input").files;
+      const title = $("#title-input").value.trim();
+      const subject = $("#subject-select").value;
+      const desc = $("#desc-input").value.trim();
+      if(!files.length || !title){ showUploadMsg("Select file(s) and enter a title.", false); return; }
+      // Validate
+      for(const f of files){
+        if(f.size > MAX_SIZE){ showUploadMsg(`File too large: ${f.name} (max 12MB)`, false); return; }
+        if(!ALLOWED.includes(f.type) && !f.name.match(/\.(pdf|pptx?|docx?|png|jpe?g|txt)$/i)){ showUploadMsg(`Unsupported type: ${f.name}`, false); return; }
+      }
+      // store metadata and blobs (demo: store metadata only, file blob as object URL)
+      const arr = getUploads();
+      for(const f of files){
+        const obj = { id: 'n_'+Math.random().toString(36).slice(2,9), ts:Date.now(), title, subject, desc, filename:f.name, size:f.size, type:f.type, uploader: (getAuth()?.username||'You'), url: URL.createObjectURL(f) };
+        arr.unshift(obj);
+      }
+      setUploads(arr);
+      showUploadMsg("Upload successful! Visible in results.", true);
+      $("#file-input").value = ""; $("#title-input").value=""; $("#desc-input").value="";
+      renderNotesList();
+    });
+
+    function showUploadMsg(msg, ok=true){ const el=$("#upload-msg"); el.textContent = msg; el.style.color = ok ? "var(--ok)" : "var(--warn)"; setTimeout(()=>{ el.textContent=''; }, 4000); }
+
+    /* ---------- Render uploaded notes list ---------- */
+    function renderNotesList(){
+      const list = getUploads();
+      const container = $("#notes-list");
+      container.innerHTML = "";
+      if(!list.length){ container.innerHTML = '<div class="muted">No notes uploaded yet. Use Upload Notes to share materials.</div>'; return; }
+      for(const it of list){
+        const row = document.createElement("div");
+        row.className = "list-row";
+        row.dataset.id = it.id;
+        row.innerHTML = `
+          <div>
+            <strong>${escapeHtml(it.title)}</strong>
+            <div class="muted">${escapeHtml(it.subject)} · ${new Date(it.ts).toLocaleString()} · by ${escapeHtml(it.uploader)}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <a class="btn" href="${it.url}" download="${it.filename}"><i data-feather="download"></i> Download</a>
+            <button class="btn" data-open><i data-feather="eye"></i> View</button>
+          </div>
+        `;
+        container.appendChild(row);
+
+        row.querySelector('[data-open]').addEventListener('click', ()=>{
+          openModal(it.title, `<div class="muted">Preview for <strong>${escapeHtml(it.filename)}</strong></div><div style="margin-top:10px"><iframe src="${it.url}" style="width:100%;height:60vh;border-radius:8px;border:1px solid var(--line)"></iframe></div>`, `<button class="btn" id="pv-close">Close</button><a class="btn btn-blue" href="${it.url}" download="${it.filename}"><i data-feather="download"></i> Download</a>`);
+          $("#pv-close").onclick = closeModal;
+        });
+      }
+      feather.replace();
+    }
+
+    /* ---------- Simple client-side search ---------- */
+    $("#btn-search").addEventListener("click", doSearch);
+    $("#global-search").addEventListener("keyup", e=>{ if(e.key === "Enter") doSearch(); });
+    function doSearch(){
+      const q = ($("#s-query").value||"").trim().toLowerCase();
+      const subj = ($("#s-subject").value||"").trim();
+      const all = getUploads();
+      const res = all.filter(it=>{
+        if(subj && it.subject !== subj) return false;
+        if(!q) return true;
+        return (it.title||'').toLowerCase().includes(q) || (it.desc||'').toLowerCase().includes(q) || (it.filename||'').toLowerCase().includes(q);
+      });
+      const status = $("#search-status");
+      const rcon = $("#results");
+      rcon.innerHTML = "";
+      if(!res.length){ status.textContent = "No results found."; return; } else { status.textContent = `${res.length} result(s)`; }
+      for(const it of res){
+        const div = document.createElement("div");
+        div.className = "list-row";
+        div.innerHTML = `<div><strong>${escapeHtml(it.title)}</strong><div class="muted">${escapeHtml(it.subject)} · ${new Date(it.ts).toLocaleString()} · ${escapeHtml(it.filename)}</div></div><div style="display:flex;gap:8px"><a class="btn" href="${it.url}" download="${it.filename}"><i data-feather="download"></i> Download</a><button class="btn" data-open>View</button></div>`;
+        rcon.appendChild(div);
+        div.querySelector('[data-open]').addEventListener('click', ()=>{
+          openModal(it.title, `<div class="muted">Preview for <strong>${escapeHtml(it.filename)}</strong></div><div style="margin-top:10px"><iframe src="${it.url}" style="width:100%;height:60vh;border-radius:8px;border:1px solid var(--line)"></iframe></div>`, `<button class="btn" id="sr-close">Close</button><a class="btn btn-blue" href="${it.url}" download="${it.filename}"><i data-feather="download"></i> Download</a>`);
+          $("#sr-close").onclick = closeModal;
+        });
+      }
+      feather.replace();
+    }
+
+    /* ---------- Quick shortcuts ---------- */
+    $("#qa-upload").addEventListener("click", ()=>{ $("#upload").scrollIntoView({behavior:"smooth"}); });
+    $("#qa-search").addEventListener("click", ()=>{ $("#search").scrollIntoView({behavior:"smooth"}); });
+
+    /* ---------- Session link ---------- */
+    $("#btn-session").addEventListener("click", ()=>{ /* direct to session.html */ });
+
+    /* ---------- Utilities ---------- */
+    function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+
+    /* ---------- init ---------- */
+    renderAuth(); renderNotesList();
+
+    // global-search behavior: link to search panel
+    $("#global-search").addEventListener("input", (e)=>{
+      $("#s-query").value = e.target.value;
+    });
+
+  </script>
+</body>
+</html>

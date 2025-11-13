@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NoteHive — Student Note Viewer</title>
+  <style>
+    :root {
+      --bg:#0b0c10; --panel:#15161a; --ink:#f3f4f6; --muted:#a3a6ad; --line:#272a30;
+      --blue:#3b82f6; --green:#10b981; --red:#ef4444; --amber:#f59e0b;
+      --r:18px; --shadow:0 12px 32px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{text-decoration:none;color:inherit}
+
+    .top{position:sticky;top:0;z-index:10;background:#0b0c10cc;color:#fff;backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #111827}
+    .top-inner{max-width:1180px;margin:auto;padding:10px 20px;display:flex;align-items:center;gap:12px}
+    .logo{width:32px;height:32px;border-radius:10px;background:var(--amber);display:grid;place-items:center;color:#111;font-weight:800}
+    .crumbs{opacity:.85}
+    .right{margin-left:auto;display:flex;gap:8px}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:#1b1d23;color:var(--ink)}
+    .btn i{width:18px;height:18px}
+    .btn.primary{background:var(--blue);border-color:transparent}
+    .btn.green{background:var(--green);border-color:transparent}
+    .btn.red{background:var(--red);border-color:transparent}
+
+    .wrap{max-width:960px;margin:28px auto;padding:0 20px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:24px}
+    .muted{color:var(--muted)}
+
+    .title{font-size:1.8rem;margin:0 0 6px 0}
+    .meta{margin-bottom:18px;font-size:.9rem;color:var(--muted)}
+    .content{background:#0f1115;border:1px solid var(--line);border-radius:12px;padding:18px;min-height:400px;overflow:auto}
+    .content h1,h2,h3{color:var(--ink)}
+    .content pre{background:#1e1f25;padding:10px;border-radius:8px;overflow:auto}
+
+    footer{border-top:1px solid #111827;background:#0b0c10;margin-top:18px;color:#e5e7eb}
+    .foot{display:flex;align-items:center;justify-content:space-between;padding:14px 0;font-size:12px;max-width:960px;margin:auto}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="logo">NH</div>
+      <div class="crumbs">Dashboard ▸ View Note</div>
+      <div class="right">
+        <a class="btn" href="index_stud.html"><i data-feather="arrow-left"></i> Back</a>
+        <button class="btn primary" id="btn-download"><i data-feather="download"></i> Download</button>
+        <button class="btn red" id="btn-logout"><i data-feather="log-out"></i> Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="panel">
+      <h1 class="title" id="note-title">Loading...</h1>
+      <div class="meta" id="note-meta">Subject: — | Uploaded by: Teacher</div>
+      <div class="content" id="note-body">
+        <p class="muted">No note found. Please ensure a note is published by the teacher.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="foot">
+      <span>© <span id="year"></span> NoteHive. All rights reserved.</span>
+      <span class="muted">Student Dashboard Viewer</span>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    feather.replace();
+
+    $("#year").textContent = new Date().getFullYear();
+
+    // Load note data from localStorage
+    const title = localStorage.getItem("notehive.editor.title");
+    const doc = localStorage.getItem("notehive.editor.doc");
+    const subject = localStorage.getItem("notehive.editor.subject");
+
+    if (title && doc) {
+      $("#note-title").textContent = title;
+      $("#note-body").innerHTML = doc;
+      $("#note-meta").textContent = `Subject: ${subject || '—'} | Uploaded by: Teacher`;
+    } else {
+      $("#note-body").innerHTML = "<p class='muted'>No note found in local storage. Please check if the teacher has published one.</p>";
+    }
+
+    // Download as HTML
+    $("#btn-download").addEventListener("click", ()=>{
+      const blob = new Blob([$("#note-body").innerHTML], {type: "text/html"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (title || "NoteHive_Note") + ".html";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    // Logout (demo)
+    $("#btn-logout").addEventListener("click", ()=>{
+      alert("Logged out.");
+      localStorage.removeItem("notehive.auth");
+      location.href = "index_stud.html";
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NoteHive — Editor</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --panel:#15161a; --ink:#f3f4f6; --muted:#a3a6ad; --line:#272a30;
+      --blue:#3b82f6; --green:#10b981; --red:#ef4444; --amber:#f59e0b;
+      --r:18px; --shadow:0 12px 32px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{text-decoration:none;color:inherit}
+    .top{position:sticky;top:0;z-index:10;background:#0b0c10cc;color:#fff;backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #111827}
+    .top-inner{max-width:1180px;margin:auto;padding:10px 20px;display:flex;align-items:center;gap:12px}
+    .logo{width:32px;height:32px;border-radius:10px;background:var(--amber);display:grid;place-items:center;color:#111;font-weight:800}
+    .crumbs{opacity:.85}
+    .right{margin-left:auto;display:flex;gap:8px}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:#1b1d23;color:var(--ink)}
+    .btn i{width:18px;height:18px}
+    .btn.primary{background:var(--blue);border-color:transparent}
+    .btn.green{background:var(--green);border-color:transparent}
+    .btn.red{background:var(--red);border-color:transparent}
+
+    .wrap{max-width:1180px;margin:18px auto;padding:0 20px;display:grid;grid-template-columns:260px 1fr;gap:16px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+
+    .side{padding:14px}
+    .side h4{margin:0 0 8px 0}
+    .list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+    .list a{display:flex;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px;background:#20232a}
+
+    .editor{display:flex;flex-direction:column;min-height:70vh}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-bottom:1px solid var(--line);background:#1a1d22;border-radius:18px 18px 0 0}
+    .tool{height:32px;padding:0 10px;border:1px solid var(--line);background:#222733;color:var(--ink);border-radius:8px;cursor:pointer}
+    .tool i{width:16px;height:16px}
+    .content{padding:18px;min-height:520px}
+    .content[contenteditable="true"]{outline:none}
+    .title{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0f1115;color:var(--ink);margin-bottom:10px}
+    .foot{display:flex;gap:8px;justify-content:flex-end;padding:12px;border-top:1px solid var(--line);background:#1a1d22;border-radius:0 0 18px 18px}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:10px;align-items:center}
+    .select{padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#0f1115;color:var(--ink)}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="logo">NH</div>
+      <div class="crumbs">Dashboard ▸ Editor</div>
+      <div class="right">
+        <a class="btn" href="index.html"><i data-feather="arrow-left"></i> Back</a>
+        <button class="btn" id="btn-save"><i data-feather="save"></i> Save draft</button>
+        <button class="btn primary" id="btn-publish"><i data-feather="upload-cloud"></i> Publish</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <aside class="panel side">
+      <h4>Templates</h4>
+      <ul class="list">
+        <li><a href="#" data-tpl="ds">Lecture: Data Structures <span class="muted">insert</span></a></li>
+        <li><a href="#" data-tpl="os">Lecture: Operating Systems <span class="muted">insert</span></a></li>
+        <li><a href="#" data-tpl="dbms">Lecture: DBMS <span class="muted">insert</span></a></li>
+      </ul>
+      <h4 style="margin-top:12px">Meta</h4>
+      <div class="row">
+        <select id="subject" class="select">
+          <option>Data Structures</option>
+          <option>Operating Systems</option>
+          <option>DBMS</option>
+          <option>Computer Networks</option>
+          <option>OOP (Java)</option>
+        </select>
+        <span class="muted" id="status">Autosaved</span>
+      </div>
+      <h4 style="margin-top:12px">Shortcuts</h4>
+      <div class="muted">Ctrl/⌘ + B = Bold · Ctrl/⌘ + I = Italic · Ctrl/⌘ + K = Link</div>
+    </aside>
+
+    <section class="panel editor">
+      <div class="toolbar">
+        <button class="tool" data-cmd="formatBlock" data-val="H1">H1</button>
+        <button class="tool" data-cmd="formatBlock" data-val="H2">H2</button>
+        <button class="tool" data-cmd="bold"><i data-feather="bold"></i></button>
+        <button class="tool" data-cmd="italic"><i data-feather="italic"></i></button>
+        <button class="tool" data-cmd="insertUnorderedList"><i data-feather="list"></i></button>
+        <button class="tool" data-cmd="insertOrderedList"><i data-feather="list-ordered"></i></button>
+        <button class="tool" id="mk-link"><i data-feather="link-2"></i></button>
+        <button class="tool" data-cmd="formatBlock" data-val="PRE"><i data-feather="code"></i></button>
+        <span style="flex:1"></span>
+        <button class="tool red" id="clear-doc"><i data-feather="trash-2"></i></button>
+      </div>
+      <div class="content">
+        <input id="title" class="title" placeholder="Note title (e.g., CPU Scheduling)"/>
+        <div id="doc" contenteditable="true">
+          <h1>Untitled Note</h1>
+          <p>Start writing…</p>
+        </div>
+      </div>
+      <div class="foot">
+        <span class="muted" id="footer-hint">Draft workspace • Not shared yet</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    const $$ = s => [...document.querySelectorAll(s)];
+    feather.replace();
+
+    /* -------- Query params (mode/template) -------- */
+    const params = new URLSearchParams(location.search);
+    const mode = params.get("mode") || "docs";
+
+    /* -------- LocalStorage keys -------- */
+    const docKey = "notehive.editor.doc";
+    const titleKey = "notehive.editor.title";
+    const subjectKey = "notehive.editor.subject";
+
+    const doc = $("#doc");
+    const titleEl = $("#title");
+    const subjectEl = $("#subject");
+    const status = $("#status");
+
+    /* -------- Restore last state -------- */
+    function restore(){
+      const t = localStorage.getItem(titleKey);
+      const d = localStorage.getItem(docKey);
+      const s = localStorage.getItem(subjectKey);
+      if(t) titleEl.value = t;
+      if(d) doc.innerHTML = d;
+      if(s) subjectEl.value = s;
+      if(mode === "check" && !d){ doc.innerHTML = "<h1>Lab Checklist</h1><ul><li>[ ] Objective</li><li>[ ] Materials</li><li>[ ] Procedure</li></ul>"; }
+      if(mode === "code" && !d){ doc.innerHTML = "<h1>Code + LaTeX</h1><pre>// paste code here</pre><p>Inline math: E = mc^2</p>"; }
+    }
+    restore();
+
+    /* -------- Toolbar actions -------- */
+    $$(".tool[data-cmd]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        document.execCommand(btn.dataset.cmd, false, btn.dataset.val || null);
+        markDirty();
+      });
+    });
+    $("#mk-link").addEventListener("click", ()=>{
+      const url = prompt("Enter URL:","https://");
+      if(url) document.execCommand("createLink", false, url);
+      markDirty();
+    });
+    $("#clear-doc").addEventListener("click", ()=>{
+      if(confirm("Clear the document content?")){
+        doc.innerHTML = "<p></p>";
+        markDirty();
+      }
+    });
+
+    /* -------- Templates -------- */
+    const tpls = {
+      ds:`<h1>Data Structures: Arrays & Linked Lists</h1><ul><li>Introduction</li><li>Array operations</li><li>Linked list operations</li></ul>`,
+      os:`<h1>Operating Systems: CPU Scheduling</h1><ul><li>FCFS</li><li>SJF</li><li>Round Robin</li></ul>`,
+      dbms:`<h1>DBMS: ER Modeling</h1><ul><li>Entities & Attributes</li><li>Relationships</li><li>Mapping to tables</li></ul>`
+    };
+    $$("[data-tpl]").forEach(a=>{
+      a.addEventListener("click", e=>{
+        e.preventDefault();
+        doc.innerHTML = tpls[a.dataset.tpl];
+        markDirty();
+      });
+    });
+
+    /* -------- Autosave & status -------- */
+    function save(){
+      localStorage.setItem(docKey, doc.innerHTML);
+      localStorage.setItem(titleKey, titleEl.value || "");
+      localStorage.setItem(subjectKey, subjectEl.value || "");
+      status.textContent = "Saved";
+    }
+    let saveTimer;
+    function markDirty(){
+      status.textContent = "Edited • unsaved";
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(save, 600);
+    }
+    doc.addEventListener("input", markDirty);
+    titleEl.addEventListener("input", markDirty);
+    subjectEl.addEventListener("change", markDirty);
+
+    $("#btn-save").addEventListener("click", save);
+    $("#btn-publish").addEventListener("click", ()=>{
+      save();
+      alert("Published! (demo) Students can now view the note.");
+    });
+
+    /* -------- Keyboard shortcuts -------- */
+    document.addEventListener("keydown", (e)=>{
+      const mod = e.ctrlKey || e.metaKey;
+      if(mod && e.key.toLowerCase()==="b"){ e.preventDefault(); document.execCommand("bold"); markDirty(); }
+      if(mod && e.key.toLowerCase()==="i"){ e.preventDefault(); document.execCommand("italic"); markDirty(); }
+      if(mod && e.key.toLowerCase()==="k"){ e.preventDefault(); const url=prompt("Enter URL:","https://"); if(url) document.execCommand("createLink", false, url); markDirty(); }
+    });
+  </script>
+</body>
+</html>
