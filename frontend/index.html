@@ -124,8 +124,8 @@
       <div class="card hero-card">
         <div class="hero-top">
           <div>
-            <h1>Welcome to NoteHive</h1>
-            <div class="muted">Professional teacher dashboard for Computer Science courses.</div>
+            <h1 id="welcome-title">Welcome to NoteHive</h1>
+            <div class="muted" id="welcome-subtitle">Professional teacher dashboard for Computer Science courses.</div>
           </div>
           <div class="hero-actions">
             <span class="pill"><i data-feather="sparkles"></i> AI Assist</span>
@@ -316,24 +316,80 @@
 
     /* -------- Session/auth (localStorage) -------- */
     const authKey = "notehive.auth";
-    function getAuth(){ try{return JSON.parse(localStorage.getItem(authKey)||"null")}catch{return null} }
+    const currentUserKey = "notehive_current_user";
+    
+    function getAuth(){ 
+      // First check for current user from registration system
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        return { username: currentUser.username, email: currentUser.email, role: currentUser.role };
+      }
+      // Fallback to old auth system
+      try{return JSON.parse(localStorage.getItem(authKey)||"null")}catch{return null} 
+    }
+    
+    function getCurrentUser() {
+      try {
+        return JSON.parse(localStorage.getItem(currentUserKey) || "null");
+      } catch {
+        return null;
+      }
+    }
+    
     function setAuth(v){ localStorage.setItem(authKey, JSON.stringify(v)); renderAuth(); }
-    function clearAuth(){ localStorage.removeItem(authKey); renderAuth(); }
+    function clearAuth(){ 
+      localStorage.removeItem(authKey);
+      localStorage.removeItem(currentUserKey);
+      renderAuth();
+      // Redirect to home page after logout
+      window.location.href = 'softwareproject.html';
+    }
 
     function renderAuth(){
       const a = getAuth();
+      const currentUser = getCurrentUser();
       const btn = $("#btn-signin");
       const out1 = $("#btn-logout"), out2 = $("#btn-logout-foot");
-      if(a){
-        btn.innerHTML = `<i data-feather="user"></i> ${a.username}`;
+      const welcomeTitle = $("#welcome-title");
+      const welcomeSubtitle = $("#welcome-subtitle");
+      
+      if(a || currentUser){
+        const displayName = currentUser?.fullName || currentUser?.username || a?.username || 'User';
+        btn.innerHTML = `<i data-feather="user"></i> ${displayName}`;
         feather.replace({ class: 'icon' });
         btn.classList.remove("btn-blue"); btn.classList.add("ghost");
         out1.disabled = false; out2.disabled = false;
+        
+        // Update welcome message
+        if (welcomeTitle && currentUser?.fullName) {
+          welcomeTitle.textContent = `Welcome back, ${currentUser.fullName}!`;
+        }
+        if (welcomeSubtitle) {
+          welcomeSubtitle.textContent = `Professional teacher dashboard for Computer Science courses.`;
+        }
       } else {
         btn.innerHTML = `<i data-feather="log-in"></i> Sign in`;
         feather.replace();
         btn.classList.add("btn-blue"); btn.classList.remove("ghost");
         out1.disabled = true; out2.disabled = true;
+        
+        // Reset welcome message
+        if (welcomeTitle) {
+          welcomeTitle.textContent = 'Welcome to NoteHive';
+        }
+        if (welcomeSubtitle) {
+          welcomeSubtitle.textContent = 'Professional teacher dashboard for Computer Science courses.';
+        }
+      }
+    }
+    
+    // Check if user is logged in on page load
+    function checkAuth() {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        // No user logged in, redirect to home
+        alert('You are not logged in. Redirecting to login page...');
+        window.location.href = 'softwareproject.html';
       }
     }
 
@@ -379,8 +435,14 @@
         closeModal();
       };
     });
-    $("#btn-logout").addEventListener("click", ()=>{ clearAuth(); alert("Logged out."); });
-    $("#btn-logout-foot").addEventListener("click", ()=>{ clearAuth(); alert("Logged out."); });
+    $("#btn-logout").addEventListener("click", ()=>{ 
+      clearAuth(); 
+      alert("Logged out successfully. Redirecting to home page...");
+    });
+    $("#btn-logout-foot").addEventListener("click", ()=>{ 
+      clearAuth(); 
+      alert("Logged out successfully. Redirecting to home page...");
+    });
 
     /* -------- Tabs -------- */
     const panels = { docs: $("#p-docs"), check: $("#p-check"), code: $("#p-code") };
@@ -490,7 +552,11 @@
       const obj = JSON.parse(s);
       if(obj.active){ /* No banner here—session page shows details */ }
     }
-    renderAuth(); renderNoteStates(); restoreSession();
+    // Check authentication and render UI
+    checkAuth();
+    renderAuth(); 
+    renderNoteStates(); 
+    restoreSession();
 
     /* -------- New note shortcut -------- */
     $("#btn-new-note").addEventListener("click", ()=>{ location.href = "editor.html?mode=docs&new=1"; });

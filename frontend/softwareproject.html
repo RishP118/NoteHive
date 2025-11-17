@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NoteHive</title>
-<link rel="stylesheet" href="software.css">
+<link rel="stylesheet" href="software.css.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 </head>
 <body>
@@ -48,7 +48,7 @@
         <p>Register now for 7 day free trial</p>
     </div>
     <div class="intro-img">
-      <img src="c:\Users\ssmat\OneDrive\Pictures\OIP.webp" alt="Notes">
+      <img src="assets/OIP.webp" alt="Notes">
     </div>
 </div>
 
@@ -144,7 +144,7 @@
          </p>
     </div>
     <div class="about-img">
-         <img src="c:\Users\ssmat\OneDrive\Pictures\1000_F_595278130_pm019aWdqNojWHZsWiUcPi3sthitC1Gk (1).jpg" alt="About NoteHive">
+         <img src="assets/1000_F_595278130_pm019aWdqNojWHZsWiUcPi3sthitC1Gk (1).jpg" alt="About NoteHive">
     </div>
 </div>
 
@@ -252,18 +252,19 @@
 <div id="loginModal" class="modal">
     <div class="modal-content auth-form-container">
         <span class="close" onclick="closeLoginModal()">&times;</span>
-        <h2>Welcome Back to NoteHive</h2>
+        <h2>Welcome to NoteHive</h2>
         <p>Log in to access your notes and study sessions.</p>
 
         <form onsubmit="event.preventDefault(); loginUser();">
             <div class="form-group">
-                <label for="login-email">Email / User ID</label>
-                <input type="email" id="login-email" required placeholder="name@example.com">
+                <label for="login-email">Email / Username</label>
+                <input type="text" id="login-email" required placeholder="name@example.com or username">
             </div>
             <div class="form-group">
                 <label for="login-password">Password</label>
                 <input type="password" id="login-password" required placeholder="Enter your password">
             </div>
+            <div id="login-error" style="color: red; margin-bottom: 10px; display: none;"></div>
             <button type="submit" class="submit-btn login-btn">Log In</button>
         </form>
 
@@ -280,24 +281,64 @@
 </div>
 
 <div id="registerModal" class="modal">
-    <div class="modal-content auth-form-container">
+    <div class="modal-content auth-form-container" style="max-height: 90vh; overflow-y: auto;">
         <span class="close" onclick="closeRegisterModal()">&times;</span>
         <h2>Create Your NoteHive Account</h2>
         <p>Join NoteHive for free and start your 7-day trial!</p>
 
         <form onsubmit="event.preventDefault(); registerUser();">
             <div class="form-group">
-                <label for="register-name">Full Name</label>
-                <input type="text" id="register-name" required placeholder="John Doe">
+                <label for="register-fullname">Full Name <span style="color: red;">*</span></label>
+                <input type="text" id="register-fullname" required placeholder="John Doe">
             </div>
+            
             <div class="form-group">
-                <label for="register-email">Email</label>
+                <label for="register-username">Username <span style="color: red;">*</span></label>
+                <input type="text" id="register-username" required placeholder="johndoe123" minlength="3">
+            </div>
+            
+            <div class="form-group">
+                <label for="register-email">Email <span style="color: red;">*</span></label>
                 <input type="email" id="register-email" required placeholder="name@example.com">
             </div>
+            
             <div class="form-group">
-                <label for="register-password">Password</label>
-                <input type="password" id="register-password" required placeholder="Minimum 8 characters">
+                <label for="register-dob">Date of Birth <span style="color: red;">*</span></label>
+                <input type="date" id="register-dob" required>
             </div>
+            
+            <div class="form-group">
+                <label for="register-gender">Gender <span style="color: red;">*</span></label>
+                <select id="register-gender" required>
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="register-role">Role <span style="color: red;">*</span></label>
+                <select id="register-role" required>
+                    <option value="">Select Role</option>
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="register-password">Password <span style="color: red;">*</span></label>
+                <input type="password" id="register-password" required placeholder="Minimum 8 characters" minlength="8">
+            </div>
+            
+            <div class="form-group">
+                <label for="register-confirm-password">Confirm Password <span style="color: red;">*</span></label>
+                <input type="password" id="register-confirm-password" required placeholder="Re-enter your password" minlength="8">
+            </div>
+            
+            <div id="register-error" style="color: red; margin-bottom: 10px; display: none;"></div>
+            
             <button type="submit" class="submit-btn register-btn">Register Account</button>
         </form>
 
@@ -432,7 +473,7 @@
 
 
 
-<script src="software.js"></script>
+<script src="software.js.js"></script>
 </body>
 </html>
 

@@ -2,46 +2,78 @@
 let isUserLoggedIn = false; // Tracks login status (Starts false)
 
 // --- Modal Definitions ---
-const uploadModal = document.getElementById("uploadModal");
-const loginModal = document.getElementById("loginModal");
-const registerModal = document.getElementById("registerModal");
-const langPopup = document.getElementById("language-popup");
-const joinSessionModal = document.getElementById("joinSessionModal");
-const createSessionModal = document.getElementById("createSessionModal");
-const shareNotesModal = document.getElementById("shareNotesModal");
-const chatInterfaceModal = document.getElementById("chatInterfaceModal");
+let uploadModal, loginModal, registerModal, langPopup;
+let joinSessionModal, createSessionModal, shareNotesModal, chatInterfaceModal;
+let allModals = [];
 
-const allModals = [
+// Initialize modals when DOM is ready
+function initializeModals() {
+    uploadModal = document.getElementById("uploadModal");
+    loginModal = document.getElementById("loginModal");
+    registerModal = document.getElementById("registerModal");
+    langPopup = document.getElementById("language-popup");
+    joinSessionModal = document.getElementById("joinSessionModal");
+    createSessionModal = document.getElementById("createSessionModal");
+    shareNotesModal = document.getElementById("shareNotesModal");
+    chatInterfaceModal = document.getElementById("chatInterfaceModal");
+
+    allModals = [
     uploadModal, loginModal, registerModal,
     joinSessionModal, createSessionModal,
     shareNotesModal, chatInterfaceModal
-];
+    ].filter(m => m !== null); // Filter out null elements
+    
+    // Debug: Log if modals are found
+    if (!loginModal) console.warn('loginModal not found');
+    if (!registerModal) console.warn('registerModal not found');
+}
 
+// Try to initialize immediately if DOM is ready
+if (document.readyState === 'loading') {
+    // DOM is still loading, wait for DOMContentLoaded
+} else {
+    // DOM is already loaded, initialize now
+    initializeModals();
+}
 
 // --- Core Modal Handling Functions ---
 
 function openModal(modalElement) {
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
+    }
     // Closes all other modals first, then opens the requested one
-    allModals.forEach(m => m.style.display = 'none');
+    allModals.forEach(m => {
+        if (m) m.style.display = 'none';
+    });
     modalElement.style.display = "block";
 }
 
 function closeModal(modalElement) {
+    if (modalElement) {
     modalElement.style.display = "none";
+    }
 }
 
 // Close modal on outside click
 window.onclick = function(event) {
+    // Initialize modals if not already done
+    if (allModals.length === 0) {
+        initializeModals();
+    }
+    
     // 1. Close Modals
     allModals.forEach(modal => {
-        if (event.target === modal) {
+        if (modal && event.target === modal) {
             closeModal(modal);
         }
     });
 
     // 2. Close Language Pop-up
+    if (!langPopup) initializeModals();
     const langBtn = document.getElementById("mylang");
-    if (event.target !== langBtn && !langBtn.contains(event.target) && event.target !== langPopup && !langPopup.contains(event.target)) {
+    if (langPopup && langBtn && event.target !== langBtn && !langBtn.contains(event.target) && event.target !== langPopup && !langPopup.contains(event.target)) {
         langPopup.style.display = "none";
     }
 }
@@ -49,11 +81,37 @@ window.onclick = function(event) {
 
 // --- Authentication (Login/Register) Functions ---
 
-function openLoginModal() { openModal(loginModal); }
-function closeLoginModal() { closeModal(loginModal); }
+function openLoginModal() { 
+    if (!loginModal) initializeModals();
+    if (loginModal) {
+        openModal(loginModal);
+    } else {
+        console.error('Login modal element not found');
+        alert('Error: Login modal not found. Please refresh the page.');
+    }
+}
+function closeLoginModal() { 
+    if (!loginModal) initializeModals();
+    if (loginModal) {
+        closeModal(loginModal);
+    }
+}
 
-function openRegisterModal() { openModal(registerModal); }
-function closeRegisterModal() { closeModal(registerModal); }
+function openRegisterModal() { 
+    if (!registerModal) initializeModals();
+    if (registerModal) {
+        openModal(registerModal);
+    } else {
+        console.error('Register modal element not found');
+        alert('Error: Register modal not found. Please refresh the page.');
+    }
+}
+function closeRegisterModal() { 
+    if (!registerModal) initializeModals();
+    if (registerModal) {
+        closeModal(registerModal);
+    }
+}
 
 // Switch between Login and Register Modals
 function switchModalToRegister() {
@@ -66,36 +124,180 @@ function switchModalToLogin() {
     openLoginModal();
 }
 
-function loginUser() {
-    const email = document.getElementById("login-email").value;
-    const password = document.getElementById("login-password").value;
+// Store users in localStorage
+function getStoredUsers() {
+    const users = localStorage.getItem('notehive_users');
+    return users ? JSON.parse(users) : [];
+}
 
-    if (email && password) {
+function saveUser(userData) {
+    const users = getStoredUsers();
+    users.push(userData);
+    localStorage.setItem('notehive_users', JSON.stringify(users));
+}
+
+function findUser(emailOrUsername, password) {
+    const users = getStoredUsers();
+    return users.find(user => 
+        (user.email === emailOrUsername || user.username === emailOrUsername) &&
+        user.password === password
+    );
+}
+
+function loginUser() {
+    const emailOrUsername = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const errorDiv = document.getElementById("login-error");
+
+    // Clear previous errors
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
+
+    if (!emailOrUsername || !password) {
+        errorDiv.textContent = "Please enter both email/username and password.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Find user
+    const user = findUser(emailOrUsername, password);
+
+    if (!user) {
+        errorDiv.textContent = "Invalid email/username or password. Please try again.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Login successful
         isUserLoggedIn = true;
-        alert(`Login successful! Welcome back, ${email}.`);
+    
+    // Store current user in session
+    localStorage.setItem('notehive_current_user', JSON.stringify({
+        fullName: user.fullName,
+        username: user.username,
+        email: user.email,
+        role: user.role
+    }));
+
+    // Close modal
         closeLoginModal();
+
+    // Redirect based on role
+    if (user.role === 'teacher') {
+        alert(`Login successful! Welcome back, ${user.fullName}. Redirecting to Teacher Dashboard...`);
+        window.location.href = 'index.html';
+    } else if (user.role === 'student') {
+        alert(`Login successful! Welcome back, ${user.fullName}. Redirecting to Student Dashboard...`);
+        window.location.href = 'studindex.html.html';
     } else {
-        alert("Please enter both email/ID and password.");
+        alert(`Login successful! Welcome back, ${user.fullName}.`);
     }
 }
 
 function registerUser() {
-    const name = document.getElementById("register-name").value;
-    const email = document.getElementById("register-email").value;
+    const fullName = document.getElementById("register-fullname").value.trim();
+    const username = document.getElementById("register-username").value.trim();
+    const email = document.getElementById("register-email").value.trim();
+    const dob = document.getElementById("register-dob").value;
+    const gender = document.getElementById("register-gender").value;
+    const role = document.getElementById("register-role").value;
     const password = document.getElementById("register-password").value;
+    const confirmPassword = document.getElementById("register-confirm-password").value;
+    const errorDiv = document.getElementById("register-error");
 
-    if (name && email && password.length >= 8) {
+    // Clear previous errors
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
+
+    // Validation
+    if (!fullName || !username || !email || !dob || !gender || !role || !password || !confirmPassword) {
+        errorDiv.textContent = "Please fill in all required fields.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    if (password.length < 8) {
+        errorDiv.textContent = "Password must be at least 8 characters long.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        errorDiv.textContent = "Passwords do not match. Please try again.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    if (username.length < 3) {
+        errorDiv.textContent = "Username must be at least 3 characters long.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Check if email or username already exists
+    const users = getStoredUsers();
+    const emailExists = users.some(user => user.email === email);
+    const usernameExists = users.some(user => user.username === username);
+
+    if (emailExists) {
+        errorDiv.textContent = "An account with this email already exists.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    if (usernameExists) {
+        errorDiv.textContent = "This username is already taken. Please choose another.";
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Create user object
+    const userData = {
+        fullName: fullName,
+        username: username,
+        email: email,
+        dob: dob,
+        gender: gender,
+        role: role,
+        password: password, // In production, this should be hashed
+        registeredAt: new Date().toISOString()
+    };
+
+    // Save user
+    saveUser(userData);
+
+    // Set as logged in
         isUserLoggedIn = true;
-        alert(`Account created successfully for ${name}! Starting your 7-day free trial.`);
+
+    // Store current user in session
+    localStorage.setItem('notehive_current_user', JSON.stringify({
+        fullName: fullName,
+        username: username,
+        email: email,
+        role: role
+    }));
+
+    // Close modal
         closeRegisterModal();
+
+    // Show success message and redirect
+    if (role === 'teacher') {
+        alert(`Account created successfully for ${fullName}! Starting your 7-day free trial. Redirecting to Teacher Dashboard...`);
+        window.location.href = 'index.html';
+    } else if (role === 'student') {
+        alert(`Account created successfully for ${fullName}! Starting your 7-day free trial. Redirecting to Student Dashboard...`);
+        window.location.href = 'studindex.html.html';
     } else {
-        alert("Please fill in all fields correctly (Password must be at least 8 characters).");
+        alert(`Account created successfully for ${fullName}! Starting your 7-day free trial.`);
     }
 }
 
 function logout() {
     isUserLoggedIn = false;
+    localStorage.removeItem('notehive_current_user');
     alert("You have been successfully logged out.");
+    // Redirect to home page
+    window.location.href = 'softwareproject.html';
 }
 
 
@@ -240,10 +442,14 @@ function search() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize modals when DOM is ready
+  initializeModals();
+  
   const container = document.querySelector('.feature-container');
   const leftArrow = document.querySelector('.arrow.left');
   const rightArrow = document.querySelector('.arrow.right');
 
+  if (container && rightArrow && leftArrow) {
   rightArrow.addEventListener('click', () => {
     container.scrollBy({ left: 300, behavior: 'smooth' });
   });
@@ -251,4 +457,5 @@ document.addEventListener("DOMContentLoaded", () => {
   leftArrow.addEventListener('click', () => {
     container.scrollBy({ left: -300, behavior: 'smooth' });
   });
+  }
 });

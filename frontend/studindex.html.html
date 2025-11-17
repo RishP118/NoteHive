@@ -124,8 +124,8 @@
       <div class="card hero-card">
         <div class="hero-top">
           <div>
-            <h1>Welcome to NoteHive</h1>
-            <div class="muted">Student dashboard – upload notes, search resources, and join study sessions.</div>
+            <h1 id="welcome-title">Welcome to NoteHive</h1>
+            <div class="muted" id="welcome-subtitle">Student dashboard – upload notes, search resources, and join study sessions.</div>
           </div>
           <div class="hero-actions">
             <span class="pill" id="ver-status"><i data-feather="check-circle"></i> Not Verified</span>
@@ -268,26 +268,64 @@
 
     /* ---------- Auth & Verification (simulated) ---------- */
     const authKey = "notehive.auth.student";
-    function getAuth(){ try{return JSON.parse(localStorage.getItem(authKey)||"null")}catch{return null} }
+    const currentUserKey = "notehive_current_user";
+    
+    function getAuth(){ 
+      // First check for current user from registration system
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        return { username: currentUser.username, email: currentUser.email, role: currentUser.role, verified: true };
+      }
+      // Fallback to old auth system
+      try{return JSON.parse(localStorage.getItem(authKey)||"null")}catch{return null} 
+    }
+    
+    function getCurrentUser() {
+      try {
+        return JSON.parse(localStorage.getItem(currentUserKey) || "null");
+      } catch {
+        return null;
+      }
+    }
+    
     function setAuth(v){ localStorage.setItem(authKey, JSON.stringify(v)); renderAuth(); }
-    function clearAuth(){ localStorage.removeItem(authKey); renderAuth(); }
+    function clearAuth(){ 
+      localStorage.removeItem(authKey);
+      localStorage.removeItem(currentUserKey);
+      renderAuth();
+      // Redirect to home page after logout
+      window.location.href = 'softwareproject.html';
+    }
 
     function renderAuth(){
       const a = getAuth();
+      const currentUser = getCurrentUser();
       const btn = $("#btn-signin");
       const ver = $("#ver-status");
       const out1 = $("#btn-logout"), out2 = $("#btn-logout-foot");
-      if(a){
-        btn.innerHTML = `<i data-feather="user"></i> ${a.username}`;
+      const welcomeTitle = $("#welcome-title");
+      const welcomeSubtitle = $("#welcome-subtitle");
+      
+      if(a || currentUser){
+        const displayName = currentUser?.fullName || currentUser?.username || a?.username || 'User';
+        btn.innerHTML = `<i data-feather="user"></i> ${displayName}`;
         btn.classList.remove("btn-blue"); btn.classList.add("ghost");
         feather.replace();
         out1.disabled = false; out2.disabled = false;
-        if(a.verified){
+        if(a?.verified || currentUser){
           ver.innerHTML = '<i data-feather="check-circle"></i> Verified';
           ver.style.background = "#072f1b"; ver.style.color = "#93f7c5";
         } else {
           ver.innerHTML = '<i data-feather="alert-circle"></i> Verify Email';
           ver.style.background = "#2a1b12"; ver.style.color = "var(--amber)";
+        }
+        
+        // Update welcome message
+        if (welcomeTitle && currentUser?.fullName) {
+          welcomeTitle.textContent = `Welcome back, ${currentUser.fullName}!`;
+        }
+        if (welcomeSubtitle) {
+          welcomeSubtitle.textContent = `Student dashboard – upload notes, search resources, and join study sessions.`;
         }
       } else {
         btn.innerHTML = `<i data-feather="log-in"></i> Sign in`;
@@ -296,6 +334,24 @@
         out1.disabled = true; out2.disabled = true;
         ver.innerHTML = '<i data-feather="alert-circle"></i> Not Signed In';
         ver.style.background = "transparent"; ver.style.color = "var(--muted)";
+        
+        // Reset welcome message
+        if (welcomeTitle) {
+          welcomeTitle.textContent = 'Welcome to NoteHive';
+        }
+        if (welcomeSubtitle) {
+          welcomeSubtitle.textContent = 'Student dashboard – upload notes, search resources, and join study sessions.';
+        }
+      }
+    }
+    
+    // Check if user is logged in on page load
+    function checkAuth() {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        // No user logged in, redirect to home
+        alert('You are not logged in. Redirecting to login page...');
+        window.location.href = 'softwareproject.html';
       }
     }
 
@@ -316,7 +372,11 @@
           <button class="btn btn-red" id="pm-logout">Sign out</button>
         `);
         $("#pm-close").onclick = closeModal;
-        $("#pm-logout").onclick = ()=>{ clearAuth(); closeModal(); alert("Signed out"); };
+        $("#pm-logout").onclick = ()=>{ 
+          clearAuth(); 
+          closeModal(); 
+          alert("Logged out successfully. Redirecting to home page...");
+        };
         if(!a.verified){
           $("#pm-verify").onclick = ()=>{ alert("Verification email (simulated) sent. Click Verify in the next modal."); closeModal(); openVerifyModal(); };
         }
@@ -374,8 +434,14 @@
       };
     }
 
-    $("#btn-logout").addEventListener("click", ()=>{ clearAuth(); alert("Logged out."); });
-    $("#btn-logout-foot").addEventListener("click", ()=>{ clearAuth(); alert("Logged out."); });
+    $("#btn-logout").addEventListener("click", ()=>{ 
+      clearAuth(); 
+      alert("Logged out successfully. Redirecting to home page...");
+    });
+    $("#btn-logout-foot").addEventListener("click", ()=>{ 
+      clearAuth(); 
+      alert("Logged out successfully. Redirecting to home page...");
+    });
 
     /* ---------- Modal helpers ---------- */
     const backdrop = $("#backdrop"), modalBody = $("#modal-body"), modalFoot = $("#modal-foot"), modalTitle = $("#modal-title");
@@ -494,7 +560,10 @@
     function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
 
     /* ---------- init ---------- */
-    renderAuth(); renderNotesList();
+    // Check authentication and render UI
+    checkAuth();
+    renderAuth(); 
+    renderNotesList();
 
     // global-search behavior: link to search panel
     $("#global-search").addEventListener("input", (e)=>{
