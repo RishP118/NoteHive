@@ -458,67 +458,24 @@
     backdrop.addEventListener("click", e=>{ if(e.target === backdrop) closeModal(); });
 
     /* ---------- Notes storage & upload ---------- */
-    const uploadsKey = "notehive.student.uploads";
-    function getUploads(){ try{return JSON.parse(localStorage.getItem(uploadsKey)||"[]")}catch{return []} }
-    function setUploads(arr){ localStorage.setItem(uploadsKey, JSON.stringify(arr)); }
 
-    const MAX_SIZE = 12 * 1024 * 1024; // 12 MB per file
-    const ALLOWED = ['application/pdf','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/png','image/jpeg','text/plain'];
-
+    // --- Backend-driven upload and note creation ---
     $("#btn-upload").addEventListener("click", ()=>{
-      const files = $("#file-input").files;
-      const title = $("#title-input").value.trim();
-      const subject = $("#subject-select").value;
-      const desc = $("#desc-input").value.trim();
-      if(!files.length || !title){ showUploadMsg("Select file(s) and enter a title.", false); return; }
-      // Validate
-      for(const f of files){
-        if(f.size > MAX_SIZE){ showUploadMsg(`File too large: ${f.name} (max 12MB)`, false); return; }
-        if(!ALLOWED.includes(f.type) && !f.name.match(/\.(pdf|pptx?|docx?|png|jpe?g|txt)$/i)){ showUploadMsg(`Unsupported type: ${f.name}`, false); return; }
-      }
-      // store metadata and blobs (demo: store metadata only, file blob as object URL)
-      const arr = getUploads();
-      for(const f of files){
-        const obj = { id: 'n_'+Math.random().toString(36).slice(2,9), ts:Date.now(), title, subject, desc, filename:f.name, size:f.size, type:f.type, uploader: (getAuth()?.username||'You'), url: URL.createObjectURL(f) };
-        arr.unshift(obj);
-      }
-      setUploads(arr);
-      showUploadMsg("Upload successful! Visible in results.", true);
-      $("#file-input").value = ""; $("#title-input").value=""; $("#desc-input").value="";
-      renderNotesList();
+      // You may want to get the user token from your auth system
+      uploadNotesAndCreateNote({
+        fileInputId: "file-input",
+        titleInputId: "title-input",
+        subjectInputId: "subject-select",
+        descInputId: "desc-input",
+        uploadMsgId: "upload-msg",
+        notesListId: "notes-list"
+        // userToken: ...
+      });
     });
 
-    function showUploadMsg(msg, ok=true){ const el=$("#upload-msg"); el.textContent = msg; el.style.color = ok ? "var(--ok)" : "var(--warn)"; setTimeout(()=>{ el.textContent=''; }, 4000); }
-
-    /* ---------- Render uploaded notes list ---------- */
-    function renderNotesList(){
-      const list = getUploads();
-      const container = $("#notes-list");
-      container.innerHTML = "";
-      if(!list.length){ container.innerHTML = '<div class="muted">No notes uploaded yet. Use Upload Notes to share materials.</div>'; return; }
-      for(const it of list){
-        const row = document.createElement("div");
-        row.className = "list-row";
-        row.dataset.id = it.id;
-        row.innerHTML = `
-          <div>
-            <strong>${escapeHtml(it.title)}</strong>
-            <div class="muted">${escapeHtml(it.subject)} · ${new Date(it.ts).toLocaleString()} · by ${escapeHtml(it.uploader)}</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <a class="btn" href="${it.url}" download="${it.filename}"><i data-feather="download"></i> Download</a>
-            <button class="btn" data-open><i data-feather="eye"></i> View</button>
-          </div>
-        `;
-        container.appendChild(row);
-
-        row.querySelector('[data-open]').addEventListener('click', ()=>{
-          openModal(it.title, `<div class="muted">Preview for <strong>${escapeHtml(it.filename)}</strong></div><div style="margin-top:10px"><iframe src="${it.url}" style="width:100%;height:60vh;border-radius:8px;border:1px solid var(--line)"></iframe></div>`, `<button class="btn" id="pv-close">Close</button><a class="btn btn-blue" href="${it.url}" download="${it.filename}"><i data-feather="download"></i> Download</a>`);
-          $("#pv-close").onclick = closeModal;
-        });
-      }
-      feather.replace();
-    }
+    // Render notes from backend
+    window.renderNotesListFromAPI = renderNotesListFromAPI;
+    renderNotesListFromAPI({ notesListId: "notes-list" });
 
     /* ---------- Simple client-side search ---------- */
     $("#btn-search").addEventListener("click", doSearch);

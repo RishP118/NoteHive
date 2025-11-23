@@ -5,8 +5,8 @@ import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Upload file
-router.post('/upload', protect, (req, res, next) => {
+// Upload file (no auth required for demo/local dev)
+router.post('/upload', (req, res, next) => {
   uploadSingle(req, res, (err) => {
     if (err) return handleUploadError(err, req, res, next);
     uploadFile(req, res);

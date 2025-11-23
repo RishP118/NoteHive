@@ -17,7 +17,8 @@ export const uploadFile = async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
-    const { associatedNote, associatedGroup, tags } = req.body;
+    // Accept extra fields for compatibility with frontend
+    const { associatedNote, associatedGroup, tags, title, desc, subject } = req.body;
 
     // Validate file type
     if (!ALLOWED_FILE_TYPES.includes(req.file.mimetype)) {
@@ -31,7 +32,11 @@ export const uploadFile = async (req, res) => {
       return res.status(400).json({ success: false, error: 'File size exceeds limit' });
     }
 
-    // Create file record
+    // Allow unauthenticated uploads (for demo/local dev)
+    let uploadedBy = null;
+    if (req.user && req.user.id) uploadedBy = req.user.id;
+
+    // Create file record with extra metadata if provided
     const file = await File.create({
       filename: req.file.filename,
       originalName: req.file.originalname,
@@ -39,10 +44,14 @@ export const uploadFile = async (req, res) => {
       size: req.file.size,
       path: req.file.path,
       url: `/uploads/${req.file.filename}`,
-      uploadedBy: req.user.id,
+      uploadedBy,
       associatedNote: associatedNote || null,
       associatedGroup: associatedGroup || null,
-      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : []
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
+      // Save extra fields for reference
+      title: title || req.file.originalname,
+      description: desc || '',
+      subject: subject || ''
     });
 
     // If associated with note, add to note's attachments

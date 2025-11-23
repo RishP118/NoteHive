@@ -1,3 +1,113 @@
+// --- Backend-driven Upload Notes and Note Creation ---
+async function uploadNotesAndCreateNote({
+    fileInputId = "file-input",
+    titleInputId = "title-input",
+    subjectInputId = "subject-select",
+    descInputId = "desc-input",
+    uploadMsgId = "upload-msg",
+    notesListId = "notes-list",
+    userToken = null
+} = {}) {
+    const files = document.getElementById(fileInputId).files;
+    const title = document.getElementById(titleInputId).value.trim();
+    const subject = document.getElementById(subjectInputId).value;
+    const desc = document.getElementById(descInputId).value.trim();
+    const showUploadMsg = (msg, ok = true) => {
+        const el = document.getElementById(uploadMsgId);
+        if (el) {
+            el.textContent = msg;
+            el.style.color = ok ? "var(--ok)" : "var(--warn)";
+            setTimeout(() => { el.textContent = ''; }, 4000);
+        }
+    };
+    if (!files.length || !title) {
+        showUploadMsg("Select file(s) and enter a title.", false);
+        return;
+    }
+    // Only support single file upload for now
+    const file = files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    // Optionally add tags, group, etc.
+    showUploadMsg("Uploading file...", true);
+    try {
+        const uploadRes = await fetch("/api/files/upload", {
+            method: "POST",
+            headers: userToken ? { Authorization: `Bearer ${userToken}` } : {},
+            body: formData
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) throw new Error(uploadData.error || "File upload failed");
+        const fileId = uploadData.data.file._id;
+        // Now create the note
+        showUploadMsg("Saving note...", true);
+        const noteRes = await fetch("/api/notes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(userToken ? { Authorization: `Bearer ${userToken}` } : {})
+            },
+            body: JSON.stringify({
+                title,
+                content: desc || " ",
+                subject,
+                attachments: [{ fileId, filename: file.name }]
+            })
+        });
+        const noteData = await noteRes.json();
+        if (!noteData.success) throw new Error(noteData.error || "Note creation failed");
+        showUploadMsg("Uploaded successfully! Visible to all.", true);
+        // Clear form
+        document.getElementById(fileInputId).value = "";
+        document.getElementById(titleInputId).value = "";
+        document.getElementById(descInputId).value = "";
+        // Refresh notes list
+        if (typeof window.renderNotesListFromAPI === "function") window.renderNotesListFromAPI({ notesListId, userToken });
+    } catch (err) {
+        showUploadMsg(err.message || "Upload failed", false);
+    }
+}
+
+// --- Fetch and render notes from backend ---
+async function renderNotesListFromAPI({ notesListId = "notes-list", userToken = null } = {}) {
+    const container = document.getElementById(notesListId);
+    if (!container) return;
+    container.innerHTML = "<div class='muted'>Loading notes...</div>";
+    try {
+        const res = await fetch("/api/notes", {
+            headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "Failed to fetch notes");
+        const notes = data.data.notes || [];
+        if (!notes.length) {
+            container.innerHTML = "<div class='muted'>No notes uploaded yet.</div>";
+            return;
+        }
+        container.innerHTML = "";
+        for (const note of notes) {
+            const row = document.createElement("div");
+            row.className = "list-row";
+            row.dataset.note = note.title;
+            const file = (note.attachments && note.attachments[0]) || {};
+            row.innerHTML = `
+                <div>
+                    <strong>${note.title}</strong>
+                    <div class="muted">${note.subject || ""} · ${new Date(note.createdAt).toLocaleString()} · by ${note.userId?.username || "?"}</div>
+                </div>
+                <div style="display:flex;gap:8px">
+                    <a class="btn" href="${file.url || '#'}" target="_blank"><i data-feather="file-text"></i> Open</a>
+                    <button class="btn act-comment"><i data-feather="message-circle"></i> Comment</button>
+                    <button class="btn act-rate"><i data-feather="star"></i> Rate</button>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+        if (window.feather) feather.replace();
+    } catch (err) {
+        container.innerHTML = `<div class='muted'>${err.message || "Failed to load notes."}</div>`;
+    }
+}
 // --- Global State for Demonstration ---
 let isUserLoggedIn = false; // Tracks login status (Starts false)
 
@@ -255,6 +365,9 @@ async function registerUser() {
             role: data.user.role
         }));
 
+        // Mark user as logged in and close register modal
+        isUserLoggedIn = true;
+        closeRegisterModal && closeRegisterModal();
         // Redirect based on role
         if (data.user.role === 'teacher') {
             window.location.href = 'index.html'; // Teacher dashboard
@@ -291,8 +404,7 @@ function logout() {
     isUserLoggedIn = false;
     localStorage.removeItem('notehive_current_user');
     alert("You have been successfully logged out.");
-    // Redirect to home page
-    window.location.href = 'softwareproject.html';
+
 }
 
 
@@ -307,7 +419,6 @@ function selectLanguage(language) {
     alert(`Language changed to ${language}.`);
     toggleLanguagePopup();
 }
-
 
 // --- Study Session Functions (with Login Check) ---
 
@@ -346,7 +457,6 @@ function startInstantSession() {
     alert(`Starting instant session for: ${topic}... (Link copied to clipboard).`);
     closeCreateSessionModal();
 }
-
 function scheduleSession() {
     const topic = document.getElementById("session-topic").value || "Untitled Session";
     alert(`Scheduling session for: ${topic}... Opening calendar interface!`);

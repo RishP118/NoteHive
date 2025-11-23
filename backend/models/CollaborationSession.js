@@ -1,11 +1,37 @@
 import mongoose from 'mongoose';
 
+
 const collaborationSessionSchema = new mongoose.Schema({
   noteId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Note',
     required: true,
     index: true
+  },
+  meetingId: {
+    type: String
+  },
+  joinUrl: {
+    type: String
+  },
+  startUrl: {
+    type: String
+  },
+  title: {
+    type: String
+  },
+  date: {
+    type: String
+  },
+  time: {
+    type: String
+  },
+  duration: {
+    type: Number
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   activeUsers: [{
     userId: {
