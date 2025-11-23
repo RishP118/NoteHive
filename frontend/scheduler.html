@@ -72,6 +72,12 @@
     feather.replace();
     const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
     const key="notehive.schedule";
+    const API_BASE_URL = 'http://localhost:3000'; // Backend server URL
+    
+    // Get token from localStorage or sessionStorage
+    function getToken() {
+      return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
+    }
 
     function getAll(){ try{return JSON.parse(localStorage.getItem(key)||"[]")}catch{return []} }
     function setAll(v){ localStorage.setItem(key, JSON.stringify(v)); }
@@ -107,30 +113,51 @@
       msgDiv.textContent = "";
       if(!t || !d || !tm){ msgDiv.textContent="Please fill all fields."; msgDiv.style.color="#f97316"; return; }
       if($("#net-stable").checked){
-        // Get user info
+        // Get user info and token
         let user = null;
         try {
           user = JSON.parse(localStorage.getItem('notehive_current_user') || sessionStorage.getItem('user') || 'null');
         } catch {}
-        if (!user || !user.id) {
-          msgDiv.textContent = 'You must be logged in to schedule.';
+        
+        const token = getToken();
+        if (!user || !user.id || !token) {
+          msgDiv.textContent = 'You must be logged in to schedule. Please sign in first.';
           msgDiv.style.color = '#f97316';
           return;
         }
+        
         // Create Zoom meeting and save in backend
         let zoomRes;
         try {
-          zoomRes = await fetch('http://localhost:3000/api/zoom/create-meeting', {
+          msgDiv.textContent = 'Creating Zoom meeting...';
+          msgDiv.style.color = '#3b82f6';
+          
+          const response = await fetch(`${API_BASE_URL}/api/zoom/create-meeting`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ title: t, date: d, time: tm, duration: 30 })
           });
-          zoomRes = await zoomRes.json();
-          if (!zoomRes.success) throw new Error(zoomRes.error || 'Zoom API error');
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { error: errorText || `HTTP ${response.status}` };
+            }
+            throw new Error(errorData.error || errorData.message || 'Failed to create meeting');
+          }
+          
+          zoomRes = await response.json();
+          if (!zoomRes.success) {
+            throw new Error(zoomRes.error || 'Zoom API error');
+          }
         } catch (err) {
+          console.error('Zoom meeting creation error:', err);
           msgDiv.textContent = 'Error scheduling Zoom meeting: ' + err.message;
           msgDiv.style.color = '#ef4444';
           return;

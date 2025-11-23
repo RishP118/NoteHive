@@ -441,107 +441,169 @@
     /* -------- Quick action scroll shortcuts -------- */
     $("#qa-upload").addEventListener("click", ()=>$("#upload").scrollIntoView({behavior:"smooth"}));
 
-    /* -------- Upload flow (localStorage demo) -------- */
-    const uploadsKey = "notehive.uploads";
-    function getUploads(){ try{ return JSON.parse(localStorage.getItem(uploadsKey)||"[]"); }catch{return []} }
-    function setUploads(list){ localStorage.setItem(uploadsKey, JSON.stringify(list)); }
+    /* -------- Upload flow (MongoDB) -------- */
+    const API_BASE_URL = 'http://localhost:3000'; // Backend server URL
     function showUploadMsg(msg, ok=true){ const el=$("#upload-msg"); el.textContent = msg; el.style.color = ok ? "var(--ok)" : "var(--warn)"; }
+    function getToken(){ 
+      try {
+        const token = localStorage.getItem('token');
+        if (token) return token;
+        const userStr = localStorage.getItem('notehive_current_user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          return user.token || null;
+        }
+      } catch (e) {
+        console.warn("Error parsing token:", e);
+      }
+      return null;
+    }
 
-    $("#btn-upload").addEventListener("click", ()=>{
+    $("#btn-upload").addEventListener("click", async ()=>{
       const files = $("#file-input").files;
       const title = $("#title-input").value.trim();
       const subject = $("#subject-select").value;
       const desc = $("#desc-input").value.trim();
       if(!files.length || !title){ showUploadMsg("Select file(s) and enter a title.", false); return; }
+      
       const file = files[0];
-      const fileUrl = URL.createObjectURL(file);
-      const filename = file.name;
-      const list = getUploads();
-      list.push({ts: Date.now(), title, subject, desc, count: files.length, fileUrl, filename});
-      setUploads(list);
-      showUploadMsg("Uploaded successfully. Visible to students.", true);
-      $("#file-input").value = ""; $("#title-input").value=""; $("#desc-input").value="";
+      const token = getToken();
+      showUploadMsg("Uploading file...", true);
 
-      // Dynamically add the new note to the Uploaded Notes list
-      const notesList = $("#notes-list");
-      if (notesList && title) {
-        const row = document.createElement("div");
-        row.className = "list-row";
-        row.dataset.note = title;
-        row.innerHTML = `
-          <div><strong>${title}</strong><div class="muted" data-state></div></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn act-open"><i data-feather="file-text"></i> Open</button>
-            <button class="btn act-comment"><i data-feather="message-circle"></i> Comment</button>
-            <button class="btn act-rate"><i data-feather="star"></i> Rate</button>
-          </div>
-        `;
-        notesList.appendChild(row);
-        feather.replace();
-        renderNoteStates();
-      }
-
-      // --- Background upload to backend for MongoDB files collection ---
       try {
+        // Step 1: Upload file to get fileId
         const formData = new FormData();
         formData.append("file", file);
         formData.append("title", title);
         formData.append("subject", subject);
         formData.append("desc", desc);
-        // Get JWT token from localStorage (set after login/register)
-        const token = localStorage.getItem('token') || (JSON.parse(localStorage.getItem('notehive_current_user')||'{}').token);
-        fetch("/api/files/upload", {
+
+        const uploadRes = await fetch(`${API_BASE_URL}/api/files/upload`, {
           method: "POST",
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formData
-        }).then(r => r.json()).then(data => {
-          // Optionally handle backend response
-          if (!data.success) {
-            console.warn("Backend upload failed:", data.error || data);
-          }
-        }).catch(err => {
-          console.warn("Backend upload error:", err);
         });
+        
+        if (!uploadRes.ok) {
+          const errorText = await uploadRes.text();
+          throw new Error(errorText || `Upload failed with status ${uploadRes.status}`);
+        }
+        
+        const uploadData = await uploadRes.json();
+        
+        if (!uploadData.success) {
+          throw new Error(uploadData.error || "File upload failed");
+        }
+
+        const fileId = uploadData.data.file._id;
+
+        // Step 2: Create note in MongoDB with file attachment
+        showUploadMsg("Saving note...", true);
+        const noteRes = await fetch(`${API_BASE_URL}/api/notes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            title,
+            content: desc || " ",
+            subject,
+            isPublic: true, // Make uploaded notes public so they're visible to all
+            attachments: [{ fileId, filename: file.name }]
+          })
+        });
+        
+        if (!noteRes.ok) {
+          const errorText = await noteRes.text();
+          throw new Error(errorText || `Note creation failed with status ${noteRes.status}`);
+        }
+        
+        const noteData = await noteRes.json();
+        
+        if (!noteData.success) {
+          throw new Error(noteData.error || "Note creation failed");
+        }
+
+        showUploadMsg("Uploaded successfully! Visible to all.", true);
+        $("#file-input").value = ""; $("#title-input").value=""; $("#desc-input").value="";
+
+        // Reload notes from MongoDB
+        loadUploadedNotes();
       } catch (err) {
-        console.warn("Background upload to backend failed:", err);
+        showUploadMsg(err.message || "Upload failed", false);
+        console.error("Upload error:", err);
       }
     });
 
 
-    function loadUploadedNotes() {
-  const notesList = document.getElementById("notes-list");
-  if (!notesList) return;
+    // Load notes from MongoDB
+    async function loadUploadedNotes() {
+      const notesList = $("#notes-list");
+      if (!notesList) return;
 
-  notesList.innerHTML = ""; // Clear previous
+      notesList.innerHTML = "<div class='muted'>Loading notes...</div>";
+      const token = getToken();
 
-  const allNotes = JSON.parse(localStorage.getItem("uploaded_notes") || "[]");
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/notes`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch notes: ${res.status} ${res.statusText}`);
+        }
+        
+        const text = await res.text();
+        if (!text) {
+          throw new Error("Empty response from server");
+        }
+        
+        const data = JSON.parse(text);
+        
+        if (!data.success) {
+          throw new Error(data.error || "Failed to fetch notes");
+        }
 
-  allNotes.forEach(note => {
-    const row = document.createElement("div");
-    row.className = "list-row";
-    row.dataset.note = note.title;
+        const notes = data.data.notes || [];
+        notesList.innerHTML = "";
 
-    row.innerHTML = `
-      <div>
-        <strong>${note.title}</strong>
-        <div class="muted" data-state></div>
-      </div>
+        if (!notes.length) {
+          notesList.innerHTML = "<div class='muted'>No notes uploaded yet.</div>";
+          return;
+        }
 
-      <div style="display:flex;gap:8px">
-        <button class="btn act-open"><i data-feather="file-text"></i> Open</button>
-        <button class="btn act-comment"><i data-feather="message-circle"></i> Comment</button>
-        <button class="btn act-rate"><i data-feather="star"></i> Rate</button>
-      </div>
-    `;
+        notes.forEach(note => {
+          const row = document.createElement("div");
+          row.className = "list-row";
+          row.dataset.noteId = note._id;
+          row.dataset.note = note.title;
 
-    notesList.appendChild(row);
-  });
+          const file = (note.attachments && note.attachments[0]) || {};
+          const fileUrl = file.fileId?.url || file.url || "#";
 
-  feather.replace();
-  renderNoteStates();
-}
+          row.innerHTML = `
+            <div>
+              <strong>${note.title}</strong>
+              <div class="muted" data-state>${note.subject || ""} · ${new Date(note.createdAt).toLocaleString()}</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn act-open"><i data-feather="file-text"></i> Open</button>
+              <button class="btn act-comment"><i data-feather="message-circle"></i> Comment</button>
+              <button class="btn act-rate"><i data-feather="star"></i> Rate</button>
+              <button class="btn btn-red act-delete"><i data-feather="trash-2"></i> Delete</button>
+            </div>
+          `;
+          notesList.appendChild(row);
+        });
 
-window.onload = loadUploadedNotes;
+        feather.replace();
+        renderNoteStates();
+      } catch (err) {
+        notesList.innerHTML = `<div class='muted'>${err.message || "Failed to load notes."}</div>`;
+        console.error("Load notes error:", err);
+      }
+    }
 
 
     /* -------- Uploaded Notes actions (Open/Comment/Rate) -------- */
@@ -558,30 +620,133 @@ window.onload = loadUploadedNotes;
       });
     }
 
-    $("#notes-list").addEventListener("click", (e)=>{
+    $("#notes-list").addEventListener("click", async (e)=>{
       const btn = e.target.closest("button");
       if(!btn) return;
       const row = e.target.closest(".list-row");
+      const noteId = row?.dataset.noteId;
       const title = row?.dataset.note || "Note";
       const states = getNoteStates();
 
       if(btn.classList.contains("act-open")){
-        // Find the uploaded file for this note (localStorage version)
-        const uploads = getUploads();
-        // Try to match by title (latest match)
-        const fileObj = uploads.slice().reverse().find(u => u.title === title);
-        if (fileObj && fileObj.fileUrl && fileObj.filename) {
-          openModal(title,
-            `<div style='margin-bottom:12px;'>
-              <a href='${fileObj.fileUrl}' target='_blank' style='color:var(--blue);text-decoration:underline;font-weight:bold;'>${fileObj.filename}</a>
-            </div>
-            <iframe src='${fileObj.fileUrl}' style='width:100%;height:70vh;border-radius:8px;border:1px solid var(--line)'></iframe>`,
-            `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`
-          );
-        } else {
-          openModal(title, `<p class='muted'>No PDF preview available for this note.</p>`, `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`);
+        // Fetch note details from MongoDB to get file URL
+        const token = getToken();
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/notes/${noteId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          
+          if (!res.ok) {
+            throw new Error(`Failed to fetch note: ${res.status}`);
+          }
+          
+          const text = await res.text();
+          if (!text) {
+            throw new Error("Empty response from server");
+          }
+          
+          const data = JSON.parse(text);
+          
+          if (data.success && data.data.note) {
+            const note = data.data.note;
+            console.log('Note data:', note);
+            const attachment = note.attachments && note.attachments[0];
+            console.log('Attachment:', attachment);
+            
+            // The fileId should be populated as a full File object
+            const file = attachment?.fileId;
+            console.log('File object:', file);
+            
+            const filename = file?.originalName || file?.filename || attachment?.filename || "file";
+            
+            // Construct full file URL - file.url is relative like /uploads/filename
+            let fileUrl = null;
+            if (file && file.url) {
+              // If URL is relative, prepend API_BASE_URL
+              fileUrl = file.url.startsWith('http') ? file.url : `${API_BASE_URL}${file.url}`;
+              console.log('Constructed file URL:', fileUrl);
+            } else if (file && file.filename) {
+              // Fallback: construct URL from filename
+              fileUrl = `${API_BASE_URL}/uploads/${file.filename}`;
+              console.log('Fallback file URL:', fileUrl);
+            } else if (attachment?.filename) {
+              // Last resort: use attachment filename
+              fileUrl = `${API_BASE_URL}/uploads/${attachment.filename}`;
+              console.log('Last resort file URL:', fileUrl);
+            }
+
+            // Check if note has content (published from editor) or file attachment
+            const noteContent = note.content || "";
+            const hasContent = noteContent.trim() && noteContent !== " ";
+            
+            if (fileUrl) {
+              // Note has file attachment - show file preview
+              openModal(title,
+                `<div style='margin-bottom:12px;'>
+                  <a href='${fileUrl}' target='_blank' style='color:var(--blue);text-decoration:underline;font-weight:bold;'>${filename}</a>
+                </div>
+                <iframe src='${fileUrl}' style='width:100%;height:70vh;border-radius:8px;border:1px solid var(--line)'></iframe>`,
+                `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`
+              );
+            } else if (hasContent) {
+              // Note has content (published from editor) - show content
+              openModal(title,
+                `<div style='max-height:70vh;overflow-y:auto;padding:12px;background:#0f1115;border-radius:8px;border:1px solid var(--line);'>
+                  <div style='color:var(--ink);'>${noteContent}</div>
+                </div>`,
+                `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`
+              );
+            } else {
+              console.error('File URL not found. Full note data:', JSON.stringify(note, null, 2));
+              openModal(title, 
+                `<p class='muted'>No preview available for this note.</p>
+                <p class='muted' style='font-size:12px;margin-top:8px;'>
+                  Debug info:<br>
+                  Has attachments: ${note.attachments ? note.attachments.length : 0}<br>
+                  Has file: ${file ? 'Yes' : 'No'}<br>
+                  Has content: ${hasContent ? 'Yes' : 'No'}<br>
+                  File keys: ${file ? Object.keys(file).join(', ') : 'N/A'}
+                </p>`, 
+                `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`
+              );
+            }
+          } else {
+            openModal(title, `<p class='muted'>Could not load note details.</p>`, `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`);
+          }
+        } catch (err) {
+          openModal(title, `<p class='muted'>Error loading note: ${err.message}</p>`, `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`);
         }
         $("#open-close").onclick = closeModal;
+      }
+
+      if(btn.classList.contains("act-delete")){
+        if(!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) return;
+        
+        const token = getToken();
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/notes/${noteId}`, {
+            method: "DELETE",
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(errorText || `Delete failed with status ${res.status}`);
+          }
+          
+          const text = await res.text();
+          const data = text ? JSON.parse(text) : { success: true };
+          
+          if (data.success) {
+            showUploadMsg("Note deleted successfully.", true);
+            loadUploadedNotes();
+          } else {
+            throw new Error(data.error || "Delete failed");
+          }
+        } catch (err) {
+          showUploadMsg(err.message || "Failed to delete note", false);
+          console.error("Delete error:", err);
+        }
       }
 
       if(btn.classList.contains("act-comment")){
@@ -635,7 +800,7 @@ window.onload = loadUploadedNotes;
     // Check authentication and render UI
     checkAuth();
     renderAuth(); 
-    renderNoteStates(); 
+    loadUploadedNotes();
     restoreSession();
 
     /* -------- New note shortcut -------- */

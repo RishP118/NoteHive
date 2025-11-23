@@ -43,6 +43,15 @@ const createMeeting = async ({ title, date, time, duration }) => {
   try {
     const meetingStartTime = `${date}T${time}:00`;
     const accessToken = await getZoomAccessToken();
+    
+    if (!accessToken) {
+      return { success: false, error: 'Failed to obtain Zoom access token' };
+    }
+    
+    if (!ZOOM_USER_ID) {
+      return { success: false, error: 'ZOOM_USER_ID is not configured. Please set it in your .env file.' };
+    }
+    
     const response = await axios.post(
       `https://api.zoom.us/v2/users/${ZOOM_USER_ID}/meetings`,
       {
@@ -51,20 +60,43 @@ const createMeeting = async ({ title, date, time, duration }) => {
         start_time: meetingStartTime,
         duration: duration || 30,
         timezone: "Asia/Kolkata",
-        settings: { host_video: true, participant_video: true, join_before_host: false, mute_upon_entry: true }
+        settings: { 
+          host_video: true, 
+          participant_video: true, 
+          join_before_host: false, 
+          mute_upon_entry: true 
+        }
       },
-      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } }
+      { 
+        headers: { 
+          Authorization: `Bearer ${accessToken}`, 
+          "Content-Type": "application/json" 
+        } 
+      }
     );
-    return { success: true, meetingId: response.data.id, joinUrl: response.data.join_url, startUrl: response.data.start_url };
+    
+    return { 
+      success: true, 
+      meetingId: response.data.id, 
+      joinUrl: response.data.join_url, 
+      startUrl: response.data.start_url 
+    };
   } catch (error) {
     console.error("Zoom API Error:", {
       message: error.message,
       response: error.response?.data,
-      config: error.config,
-      accessToken,
-      ZOOM_USER_ID
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      ZOOM_USER_ID: ZOOM_USER_ID ? 'Set' : 'Not set',
+      hasCredentials: !!(ZOOM_ACCOUNT_ID && ZOOM_CLIENT_ID && ZOOM_CLIENT_SECRET)
     });
-    return { success: false, error: error.response?.data || "Zoom API error" };
+    
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.data?.error || 
+                        error.message || 
+                        "Zoom API error";
+    
+    return { success: false, error: errorMessage };
   }
 };
 

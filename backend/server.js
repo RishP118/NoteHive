@@ -80,11 +80,6 @@ app.use('/api/zoom', zoomRoutes);
 import sessionRoutes from './routes/sessionRoutes.js';
 app.use('/api/session', sessionRoutes);
 
-// 404 handler (keep at the end)
-app.use((req, res) => {
-  res.status(404).json({ success: false, error: 'Route not found' });
-});
-
 // --- Socket.IO JWT Authentication ---
 io.use((socket, next) => {
   try {

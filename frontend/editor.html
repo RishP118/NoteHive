@@ -79,6 +79,11 @@
         </select>
         <span class="muted" id="status">Autosaved</span>
       </div>
+      <h4 style="margin-top:12px">Saved Notes</h4>
+      <ul class="list" id="saved-notes-list">
+        <li class="muted" style="padding:8px;font-size:12px">Loading drafts...</li>
+      </ul>
+
       <h4 style="margin-top:12px">Shortcuts</h4>
       <div class="muted">Ctrl/⌘ + B = Bold · Ctrl/⌘ + I = Italic · Ctrl/⌘ + K = Link</div>
     </aside>
@@ -114,6 +119,12 @@
     const $ = s => document.querySelector(s);
     const $$ = s => [...document.querySelectorAll(s)];
     feather.replace();
+    
+    // API configuration
+    const API_BASE_URL = 'http://localhost:3000';
+    function getToken() {
+      return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
+    }
 
     /* -------- Query params (mode/template) -------- */
     const params = new URLSearchParams(location.search);
@@ -187,48 +198,256 @@ $("#new-note").addEventListener("click", e => {
 
 
     /* -------- Autosave & status -------- */
-    function save(){
+    function saveLocal(){
       localStorage.setItem(docKey, doc.innerHTML);
       localStorage.setItem(titleKey, titleEl.value || "");
       localStorage.setItem(subjectKey, subjectEl.value || "");
-      status.textContent = "Saved";
+      status.textContent = "Saved locally";
     }
     let saveTimer;
     function markDirty(){
       status.textContent = "Edited • unsaved";
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(save, 600);
+      saveTimer = setTimeout(saveLocal, 600);
     }
     doc.addEventListener("input", markDirty);
     titleEl.addEventListener("input", markDirty);
     subjectEl.addEventListener("change", markDirty);
 
-    $("#btn-save").addEventListener("click", save);
+    // Save draft to MongoDB
+    $("#btn-save").addEventListener("click", async () => {
+      saveLocal();
+      const title = titleEl.value.trim() || "Untitled Draft";
+      const content = doc.innerHTML.trim();
+      const subject = subjectEl.value || "Other";
+      const token = getToken();
 
-$("#publish").addEventListener("click", () => {
-  save();
-  const title = titleEl.value.trim();
-  const content = doc.innerHTML.trim();
+      if (!token) {
+        alert("Please log in to save drafts.");
+        return;
+      }
 
-  if (!title || title === "Untitled Note") {
-    alert("Enter a proper note title before publishing.");
-    return;
-  }
+      try {
+        status.textContent = "Saving draft...";
+        const res = await fetch(`${API_BASE_URL}/api/notes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: title + " (Draft)",
+            content: content,
+            subject: subject,
+            isPublic: false // Drafts are private
+          })
+        });
 
-  // ---- Save to LocalStorage ----
-  const note = { 
-    title, 
-    content, 
-    date: Date.now() 
-  };
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText || "Failed to save draft");
+        }
 
-  let allNotes = JSON.parse(localStorage.getItem("uploaded_notes") || "[]");
-  allNotes.push(note);
-  localStorage.setItem("uploaded_notes", JSON.stringify(allNotes));
+        const data = await res.json();
+        if (data.success) {
+          status.textContent = "Draft saved!";
+          loadSavedNotes(); // Refresh saved notes list
+          setTimeout(() => status.textContent = "Saved", 2000);
+        } else {
+          throw new Error(data.error || "Failed to save draft");
+        }
+      } catch (err) {
+        console.error("Save draft error:", err);
+        status.textContent = "Error: " + err.message;
+        status.style.color = "#ef4444";
+        setTimeout(() => {
+          status.textContent = "Saved locally";
+          status.style.color = "";
+        }, 3000);
+      }
+    });
 
-  alert("Note Published!");
-  isDirty = false;
-});
+    // Publish note to MongoDB (appears in Uploaded Notes)
+    $("#btn-publish").addEventListener("click", async () => {
+      saveLocal();
+      const title = titleEl.value.trim();
+      const content = doc.innerHTML.trim();
+      const subject = subjectEl.value || "Other";
+      const token = getToken();
+
+      if (!title || title === "Untitled Note" || !title) {
+        alert("Enter a proper note title before publishing.");
+        return;
+      }
+
+      if (!token) {
+        alert("Please log in to publish notes.");
+        return;
+      }
+
+      try {
+        status.textContent = "Publishing...";
+        const res = await fetch(`${API_BASE_URL}/api/notes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: title,
+            content: content,
+            subject: subject,
+            isPublic: true // Published notes are public
+          })
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText || "Failed to publish");
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          status.textContent = "Published!";
+          alert("Note published successfully! It will appear in Uploaded Notes.");
+          // Clear editor
+          titleEl.value = "";
+          doc.innerHTML = "<h1>Untitled Note</h1><p>Start writing…</p>";
+          saveLocal();
+          loadSavedNotes(); // Refresh saved notes list
+          setTimeout(() => status.textContent = "Ready", 2000);
+        } else {
+          throw new Error(data.error || "Failed to publish");
+        }
+      } catch (err) {
+        console.error("Publish error:", err);
+        status.textContent = "Error: " + err.message;
+        status.style.color = "#ef4444";
+        setTimeout(() => {
+          status.textContent = "Saved locally";
+          status.style.color = "";
+        }, 3000);
+      }
+    });
+
+    // Load saved notes (drafts) from MongoDB
+    async function loadSavedNotes() {
+      const list = $("#saved-notes-list");
+      const token = getToken();
+
+      if (!token) {
+        list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">Log in to see saved notes</li>';
+        return;
+      }
+
+      try {
+        list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">Loading...</li>';
+        const res = await fetch(`${API_BASE_URL}/api/notes`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to load notes");
+        }
+
+        const text = await res.text();
+        if (!text) {
+          list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">No saved notes</li>';
+          return;
+        }
+
+        const data = JSON.parse(text);
+        if (!data.success) {
+          throw new Error(data.error || "Failed to load notes");
+        }
+
+        const notes = data.data.notes || [];
+        const drafts = notes.filter(n => n.title.includes("(Draft)") || !n.isPublic);
+        
+        if (drafts.length === 0) {
+          list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">No drafts saved</li>';
+          return;
+        }
+
+        list.innerHTML = "";
+        drafts.slice(0, 10).forEach(note => {
+          const li = document.createElement("li");
+          const isDraft = note.title.includes("(Draft)");
+          const displayTitle = isDraft ? note.title.replace(" (Draft)", "") : note.title;
+          li.innerHTML = `
+            <a href="#" data-note-id="${note._id}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+              <div>
+                <strong style="font-size:13px">${displayTitle}</strong>
+                <div class="muted" style="font-size:11px">${note.subject || ""} • ${new Date(note.createdAt).toLocaleDateString()}</div>
+              </div>
+              <span class="muted" style="font-size:11px">${isDraft ? "Draft" : "Saved"}</span>
+            </a>
+          `;
+          list.appendChild(li);
+        });
+
+        // Add click handlers to load notes
+        $$("#saved-notes-list a[data-note-id]").forEach(a => {
+          a.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const noteId = a.dataset.noteId;
+            await loadNoteIntoEditor(noteId);
+          });
+        });
+
+        feather.replace();
+      } catch (err) {
+        console.error("Load saved notes error:", err);
+        list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px;color:#ef4444">Error loading notes</li>';
+      }
+    }
+
+    // Load a specific note into the editor
+    async function loadNoteIntoEditor(noteId) {
+      const token = getToken();
+      if (!token) {
+        alert("Please log in to load notes.");
+        return;
+      }
+
+      try {
+        status.textContent = "Loading note...";
+        const res = await fetch(`${API_BASE_URL}/api/notes/${noteId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to load note");
+        }
+
+        const text = await res.text();
+        const data = JSON.parse(text);
+
+        if (data.success && data.data.note) {
+          const note = data.data.note;
+          const isDraft = note.title.includes("(Draft)");
+          titleEl.value = isDraft ? note.title.replace(" (Draft)", "") : note.title;
+          doc.innerHTML = note.content || "<p></p>";
+          subjectEl.value = note.subject || "Other";
+          saveLocal();
+          status.textContent = "Note loaded";
+          setTimeout(() => status.textContent = "Ready", 2000);
+        } else {
+          throw new Error("Note not found");
+        }
+      } catch (err) {
+        console.error("Load note error:", err);
+        alert("Error loading note: " + err.message);
+        status.textContent = "Error";
+      }
+    }
+
+    // Load saved notes on page load
+    loadSavedNotes();
 
 
     /* -------- Keyboard shortcuts -------- */

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { createNote, getNotes, getNote, updateNote, deleteNote, addCollaborator } from '../controllers/noteController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, optionalAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -17,12 +17,14 @@ const noteValidation = [
     .withMessage('Content is required')
 ];
 
+// Use optionalAuth for GET to allow viewing notes without auth (for development)
+// Use protect for POST/PUT/DELETE to require auth for modifications
 router.route('/')
-  .get(protect, getNotes)
+  .get(optionalAuth, getNotes)
   .post(protect, noteValidation, createNote);
 
 router.route('/:id')
-  .get(protect, getNote)
+  .get(optionalAuth, getNote)
   .put(protect, updateNote)
   .delete(protect, deleteNote);
 

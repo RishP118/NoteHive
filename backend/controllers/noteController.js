@@ -13,7 +13,7 @@ export const createNote = async (req, res) => {
       content,
       tags: tags || [],
       subject,
-      isPublic: isPublic || false,
+      isPublic: isPublic !== undefined ? isPublic : false, // Use provided value, default to false
       userId: req.user.id,
       studyGroupId: studyGroupId || null,
       lastEditedBy: req.user.id
@@ -31,7 +31,12 @@ export const getNotes = async (req, res) => {
     const { page = 1, limit = 10, tags, subject, search, studyGroupId } = req.query;
     const skip = (page - 1) * limit;
 
-    const query = { $or: [{ userId: req.user.id }, { 'collaborators.userId': req.user.id }, { isPublic: true }] };
+    // Build query - if user is authenticated, show their notes + public notes
+    // If not authenticated, show only public notes
+    const query = req.user 
+      ? { $or: [{ userId: req.user.id }, { 'collaborators.userId': req.user.id }, { isPublic: true }] }
+      : { isPublic: true };
+    
     if (studyGroupId) query.studyGroupId = studyGroupId;
     if (tags) query.tags = { $in: Array.isArray(tags) ? tags : [tags] };
     if (subject) query.subject = subject;
@@ -63,11 +68,25 @@ export const getNote = async (req, res) => {
 
     if (!note) return res.status(404).json({ success: false, error: 'Note not found' });
 
-    const hasAccess = note.userId.toString() === req.user.id ||
-      note.collaborators.some(c => c.userId.toString() === req.user.id) ||
-      note.isPublic;
+    // Check access - more permissive logic:
+    // 1. If note is public, anyone can access
+    // 2. If user is authenticated and owns the note, allow access
+    // 3. If user is authenticated and is a collaborator, allow access
+    let hasAccess = false;
+    
+    if (note.isPublic) {
+      hasAccess = true;
+    } else if (req.user) {
+      hasAccess = note.userId.toString() === req.user.id ||
+                  note.collaborators.some(c => c.userId && c.userId.toString() === req.user.id);
+    }
 
-    if (!hasAccess) return res.status(403).json({ success: false, error: 'Not authorized to access this note' });
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Not authorized to access this note. Note is private and you are not the owner or collaborator.' 
+      });
+    }
 
     res.json({ success: true, data: { note } });
   } catch (error) {

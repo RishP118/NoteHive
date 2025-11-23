@@ -20,8 +20,23 @@ const fileFilter = (req, file, cb) => {
   else cb(new Error('File type not allowed'), false);
 };
 
-export const uploadSingle = multer({ storage, limits: { fileSize: MAX_FILE_SIZE }, fileFilter }).single('file');
+const multerUpload = multer({ storage, limits: { fileSize: MAX_FILE_SIZE }, fileFilter });
+
+export const uploadSingle = (req, res, next) => {
+  multerUpload.single('file')(req, res, (err) => {
+    if (err) {
+      return handleUploadError(err, req, res, next);
+    }
+    next();
+  });
+};
 
 export const handleUploadError = (err, req, res, next) => {
-  res.status(400).json({ success: false, error: err.message });
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ success: false, error: 'File size exceeds limit' });
+    }
+    return res.status(400).json({ success: false, error: err.message });
+  }
+  res.status(400).json({ success: false, error: err.message || 'File upload error' });
 };
