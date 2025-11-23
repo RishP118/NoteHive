@@ -194,103 +194,78 @@ function loginUser() {
     }
 }
 
-function registerUser() {
-    const fullName = document.getElementById("register-fullname").value.trim();
-    const username = document.getElementById("register-username").value.trim();
-    const email = document.getElementById("register-email").value.trim();
-    const dob = document.getElementById("register-dob").value;
-    const gender = document.getElementById("register-gender").value;
-    const role = document.getElementById("register-role").value;
-    const password = document.getElementById("register-password").value;
-    const confirmPassword = document.getElementById("register-confirm-password").value;
-    const errorDiv = document.getElementById("register-error");
 
-    // Clear previous errors
+async function registerUser() {
+    const name = document.getElementById('register-name').value.trim();
+    const username = document.getElementById('register-username').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const role = document.getElementById('register-role').value;
+    const password = document.getElementById('register-password').value;
+    const confirmPassword = document.getElementById('register-confirm-password').value;
+    const errorDiv = document.getElementById('register-error');
+
     errorDiv.style.display = 'none';
-    errorDiv.textContent = '';
+    errorDiv.innerText = '';
 
-    // Validation
-    if (!fullName || !username || !email || !dob || !gender || !role || !password || !confirmPassword) {
-        errorDiv.textContent = "Please fill in all required fields.";
+    if (!name || !username || !email || !role || !password || !confirmPassword) {
         errorDiv.style.display = 'block';
-        return;
-    }
-
-    if (password.length < 8) {
-        errorDiv.textContent = "Password must be at least 8 characters long.";
-        errorDiv.style.display = 'block';
+        errorDiv.innerText = 'Please fill all fields';
         return;
     }
 
     if (password !== confirmPassword) {
-        errorDiv.textContent = "Passwords do not match. Please try again.";
         errorDiv.style.display = 'block';
+        errorDiv.innerText = 'Passwords do not match';
         return;
     }
 
-    if (username.length < 3) {
-        errorDiv.textContent = "Username must be at least 3 characters long.";
+    try {
+        const res = await fetch('http://localhost:3000/api/users/register', {  // <-- updated
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, username, email, role, password }),
+            credentials: 'include' // allows cookies if you use them
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            errorDiv.style.display = 'block';
+            errorDiv.innerText = data.message || 'Server error. Please try again later.';
+            return;
+        }
+
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('user', JSON.stringify({
+            id: data.user.id,
+            name: data.user.name,
+            username: data.user.username,
+            email: data.user.email,
+            role: data.user.role
+        }));
+
+        window.location.href = 'home.html';
+    } catch (err) {
         errorDiv.style.display = 'block';
-        return;
+        errorDiv.innerText = 'Cannot connect to server. Please make sure backend is running.';
+        
+        console.error('Fetch error details:', err);
+    
+        if (err instanceof TypeError) {
+            console.error('Likely a network or CORS error:', err.message);
+        } else {
+            console.error('Unexpected error:', err);
+        }
     }
-
-    // Check if email or username already exists
-    const users = getStoredUsers();
-    const emailExists = users.some(user => user.email === email);
-    const usernameExists = users.some(user => user.username === username);
-
-    if (emailExists) {
-        errorDiv.textContent = "An account with this email already exists.";
-        errorDiv.style.display = 'block';
-        return;
-    }
-
-    if (usernameExists) {
-        errorDiv.textContent = "This username is already taken. Please choose another.";
-        errorDiv.style.display = 'block';
-        return;
-    }
-
-    // Create user object
-    const userData = {
-        fullName: fullName,
-        username: username,
-        email: email,
-        dob: dob,
-        gender: gender,
-        role: role,
-        password: password, // In production, this should be hashed
-        registeredAt: new Date().toISOString()
-    };
-
-    // Save user
-    saveUser(userData);
-
-    // Set as logged in
-        isUserLoggedIn = true;
-
-    // Store current user in session
-    localStorage.setItem('notehive_current_user', JSON.stringify({
-        fullName: fullName,
-        username: username,
-        email: email,
-        role: role
-    }));
-
-    // Close modal
-        closeRegisterModal();
-
-    // Show success message and redirect
-    if (role === 'teacher') {
-        alert(`Account created successfully for ${fullName}! Starting your 7-day free trial. Redirecting to Teacher Dashboard...`);
-        window.location.href = 'index.html';
-    } else if (role === 'student') {
-        alert(`Account created successfully for ${fullName}! Starting your 7-day free trial. Redirecting to Student Dashboard...`);
-        window.location.href = 'studindex.html.html';
-    } else {
-        alert(`Account created successfully for ${fullName}! Starting your 7-day free trial.`);
-    }
+    
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const registerBtn = document.getElementById("registerBtn");
+    if (registerBtn) registerBtn.addEventListener("click", registerUser);
+});
+
+
 
 function logout() {
     isUserLoggedIn = false;

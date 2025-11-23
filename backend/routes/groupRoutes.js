@@ -1,16 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const { body } = require('express-validator');
-const {
-  createGroup,
-  getGroups,
-  getGroup,
-  joinGroup,
-  inviteUser
-} = require('../controllers/groupController');
-const { protect } = require('../middleware/authMiddleware');
+import { Router } from 'express';
+import { body } from 'express-validator';
+import { createGroup, getGroups, getGroup, joinGroup, inviteUser } from '../controllers/groupController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
-// Validation rules
+const router = Router();
+
 const groupValidation = [
   body('name')
     .trim()
@@ -20,7 +14,6 @@ const groupValidation = [
     .withMessage('Group name cannot exceed 100 characters')
 ];
 
-// Routes
 router.route('/')
   .get(protect, getGroups)
   .post(protect, groupValidation, createGroup);
@@ -29,9 +22,6 @@ router.route('/:id')
   .get(protect, getGroup);
 
 router.post('/:id/join', protect, joinGroup);
-router.post('/:id/invite', protect, [
-  body('email').isEmail().withMessage('Valid email is required')
-], inviteUser);
+router.post('/:id/invite', protect, [body('email').isEmail().withMessage('Valid email is required')], inviteUser);
 
-module.exports = router;
-
+export default router;

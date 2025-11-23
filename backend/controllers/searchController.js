@@ -1,39 +1,16 @@
-const Note = require('../models/Note');
-const File = require('../models/File');
-const StudyGroup = require('../models/StudyGroup');
+import Note from '../models/Note.js';
+import File from '../models/File.js';
+import StudyGroup from '../models/StudyGroup.js';
 
-// @desc    Search notes by title, tag, or keyword
-// @route   GET /api/search/notes
-// @access  Private
-exports.searchNotes = async (req, res) => {
+export const searchNotes = async (req, res) => {
   try {
     const { q, tags, subject, page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    // Build query
-    const query = {
-      $or: [
-        { userId: req.user.id },
-        { 'collaborators.userId': req.user.id },
-        { isPublic: true }
-      ]
-    };
-
-    // Text search
-    if (q) {
-      query.$text = { $search: q };
-    }
-
-    // Tag filter
-    if (tags) {
-      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
-      query.tags = { $in: tagArray.map(t => t.trim().toLowerCase()) };
-    }
-
-    // Subject filter
-    if (subject) {
-      query.subject = subject;
-    }
+    const query = { $or: [{ userId: req.user.id }, { 'collaborators.userId': req.user.id }, { isPublic: true }] };
+    if (q) query.$text = { $search: q };
+    if (tags) query.tags = { $in: (Array.isArray(tags) ? tags : tags.split(',')).map(t => t.trim().toLowerCase()) };
+    if (subject) query.subject = subject;
 
     const notes = await Note.find(query)
       .populate('userId', 'username email')
@@ -43,50 +20,21 @@ exports.searchNotes = async (req, res) => {
 
     const total = await Note.countDocuments(query);
 
-    res.json({
-      success: true,
-      data: {
-        notes,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      }
-    });
+    res.json({ success: true, data: { notes, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } } });
   } catch (error) {
     console.error('Search notes error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error searching notes'
-    });
+    res.status(500).json({ success: false, error: 'Server error searching notes' });
   }
 };
 
-// @desc    Search files
-// @route   GET /api/search/files
-// @access  Private
-exports.searchFiles = async (req, res) => {
+export const searchFiles = async (req, res) => {
   try {
     const { q, tags, page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    const query = {
-      $or: [
-        { uploadedBy: req.user.id },
-        { isPublic: true }
-      ]
-    };
-
-    if (q) {
-      query.$text = { $search: q };
-    }
-
-    if (tags) {
-      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
-      query.tags = { $in: tagArray.map(t => t.trim().toLowerCase()) };
-    }
+    const query = { $or: [{ uploadedBy: req.user.id }, { isPublic: true }] };
+    if (q) query.$text = { $search: q };
+    if (tags) query.tags = { $in: (Array.isArray(tags) ? tags : tags.split(',')).map(t => t.trim().toLowerCase()) };
 
     const files = await File.find(query)
       .populate('uploadedBy', 'username email')
@@ -96,110 +44,41 @@ exports.searchFiles = async (req, res) => {
 
     const total = await File.countDocuments(query);
 
-    res.json({
-      success: true,
-      data: {
-        files,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      }
-    });
+    res.json({ success: true, data: { files, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } } });
   } catch (error) {
     console.error('Search files error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
-// @desc    Global search (notes, files, groups)
-// @route   GET /api/search
-// @access  Private
-exports.globalSearch = async (req, res) => {
+export const globalSearch = async (req, res) => {
   try {
     const { q, type = 'all', page = 1, limit = 5 } = req.query;
-    const skip = (page - 1) * limit;
+    if (!q) return res.status(400).json({ success: false, error: 'Search query is required' });
 
-    if (!q) {
-      return res.status(400).json({
-        success: false,
-        error: 'Search query is required'
-      });
-    }
+    const results = { notes: [], files: [], groups: [] };
 
-    const results = {
-      notes: [],
-      files: [],
-      groups: []
-    };
-
-    // Search notes
     if (type === 'all' || type === 'notes') {
-      const noteQuery = {
-        $text: { $search: q },
-        $or: [
-          { userId: req.user.id },
-          { 'collaborators.userId': req.user.id },
-          { isPublic: true }
-        ]
-      };
-
-      results.notes = await Note.find(noteQuery)
-        .populate('userId', 'username email')
-        .sort({ score: { $meta: 'textScore' } })
-        .limit(parseInt(limit));
+      const noteQuery = { $text: { $search: q }, $or: [{ userId: req.user.id }, { 'collaborators.userId': req.user.id }, { isPublic: true }] };
+      results.notes = await Note.find(noteQuery).populate('userId', 'username email').sort({ score: { $meta: 'textScore' } }).limit(parseInt(limit));
     }
 
-    // Search files
     if (type === 'all' || type === 'files') {
-      const fileQuery = {
-        $text: { $search: q },
-        $or: [
-          { uploadedBy: req.user.id },
-          { isPublic: true }
-        ]
-      };
-
-      results.files = await File.find(fileQuery)
-        .populate('uploadedBy', 'username email')
-        .sort({ score: { $meta: 'textScore' } })
-        .limit(parseInt(limit));
+      const fileQuery = { $text: { $search: q }, $or: [{ uploadedBy: req.user.id }, { isPublic: true }] };
+      results.files = await File.find(fileQuery).populate('uploadedBy', 'username email').sort({ score: { $meta: 'textScore' } }).limit(parseInt(limit));
     }
 
-    // Search groups
     if (type === 'all' || type === 'groups') {
       const groupQuery = {
-        $or: [
-          { name: { $regex: q, $options: 'i' } },
-          { description: { $regex: q, $options: 'i' } }
-        ],
-        $or: [
-          { 'members.userId': req.user.id },
-          { createdBy: req.user.id },
-          { 'settings.isPublic': true }
-        ]
+        $or: [{ name: { $regex: q, $options: 'i' } }, { description: { $regex: q, $options: 'i' } }],
+        $or: [{ 'members.userId': req.user.id }, { createdBy: req.user.id }, { 'settings.isPublic': true }]
       };
-
-      results.groups = await StudyGroup.find(groupQuery)
-        .populate('createdBy', 'username email')
-        .limit(parseInt(limit));
+      results.groups = await StudyGroup.find(groupQuery).populate('createdBy', 'username email').limit(parseInt(limit));
     }
 
-    res.json({
-      success: true,
-      data: results
-    });
+    res.json({ success: true, data: results });
   } catch (error) {
     console.error('Global search error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 };
-

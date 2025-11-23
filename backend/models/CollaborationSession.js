@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const collaborationSessionSchema = new mongoose.Schema({
   noteId: {
@@ -27,12 +27,10 @@ const collaborationSessionSchema = new mongoose.Schema({
     default: Date.now,
     index: true
   }
-}, {
-  timestamps: true
-});
+}, { timestamps: true });
 
-// TTL index to auto-delete stale sessions after 1 hour of inactivity
+// TTL index to auto-delete stale sessions after 1 hour
 collaborationSessionSchema.index({ lastActivity: 1 }, { expireAfterSeconds: 3600 });
 
-module.exports = mongoose.model('CollaborationSession', collaborationSessionSchema);
+export default mongoose.model('CollaborationSession', collaborationSessionSchema);
 

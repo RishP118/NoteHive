@@ -281,78 +281,55 @@
 </div>
 
 <div id="registerModal" class="modal">
-    <div class="modal-content auth-form-container" style="max-height: 90vh; overflow-y: auto;">
-        <span class="close" onclick="closeRegisterModal()">&times;</span>
-        <h2>Create Your NoteHive Account</h2>
-        <p>Join NoteHive for free and start your 7-day trial!</p>
+  <div class="modal-content auth-form-container" style="max-height: 90vh; overflow-y: auto;">
+      <span class="close" onclick="closeRegisterModal()">&times;</span>
+      <h2>Create Your NoteHive Account</h2>
+      <p>Join NoteHive for free and start your 7-day trial!</p>
 
-        <form onsubmit="event.preventDefault(); registerUser();">
-            <div class="form-group">
-                <label for="register-fullname">Full Name <span style="color: red;">*</span></label>
-                <input type="text" id="register-fullname" required placeholder="John Doe">
-            </div>
-            
-            <div class="form-group">
-                <label for="register-username">Username <span style="color: red;">*</span></label>
-                <input type="text" id="register-username" required placeholder="johndoe123" minlength="3">
-            </div>
-            
-            <div class="form-group">
-                <label for="register-email">Email <span style="color: red;">*</span></label>
-                <input type="email" id="register-email" required placeholder="name@example.com">
-            </div>
-            
-            <div class="form-group">
-                <label for="register-dob">Date of Birth <span style="color: red;">*</span></label>
-                <input type="date" id="register-dob" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="register-gender">Gender <span style="color: red;">*</span></label>
-                <select id="register-gender" required>
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                    <option value="prefer-not-to-say">Prefer not to say</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="register-role">Role <span style="color: red;">*</span></label>
-                <select id="register-role" required>
-                    <option value="">Select Role</option>
-                    <option value="student">Student</option>
-                    <option value="teacher">Teacher</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="register-password">Password <span style="color: red;">*</span></label>
-                <input type="password" id="register-password" required placeholder="Minimum 8 characters" minlength="8">
-            </div>
-            
-            <div class="form-group">
-                <label for="register-confirm-password">Confirm Password <span style="color: red;">*</span></label>
-                <input type="password" id="register-confirm-password" required placeholder="Re-enter your password" minlength="8">
-            </div>
-            
-            <div id="register-error" style="color: red; margin-bottom: 10px; display: none;"></div>
-            
-            <button type="submit" class="submit-btn register-btn">Register Account</button>
-        </form>
+      <form onsubmit="event.preventDefault(); registerUser();">
+          <div class="form-group">
+              <label for="register-name">Name <span style="color: red;">*</span></label>
+              <input type="text" id="register-name" required placeholder="John Doe" minlength="3">
+          </div>
+          
+          <div class="form-group">
+              <label for="register-username">Username <span style="color: red;">*</span></label>
+              <input type="text" id="register-username" required placeholder="johndoe123" minlength="3">
+          </div>
+          
+          <div class="form-group">
+              <label for="register-email">Email <span style="color: red;">*</span></label>
+              <input type="email" id="register-email" required placeholder="name@example.com">
+          </div>
+          
+          <div class="form-group">
+              <label for="register-role">Role <span style="color: red;">*</span></label>
+              <select id="register-role" required>
+                  <option value="">Select Role</option>
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+              </select>
+          </div>
+          
+          <div class="form-group">
+              <label for="register-password">Password <span style="color: red;">*</span></label>
+              <input type="password" id="register-password" required placeholder="Minimum 8 characters" minlength="8">
+          </div>
+          
+          <div class="form-group">
+              <label for="register-confirm-password">Confirm Password <span style="color: red;">*</span></label>
+              <input type="password" id="register-confirm-password" required placeholder="Re-enter your password" minlength="8">
+          </div>
+          
+          <div id="register-error" style="color: red; margin-bottom: 10px; display: none;"></div>
+          
+          <button type="submit" class="submit-btn register-btn">Register Account</button>
+      </form>
 
-        <div class="social-login-divider">OR Register with:</div>
-
-        <div class="social-login">
-            <button class="social-btn google" onclick="alert('Registering with Google...')">Google</button>
-            <button class="social-btn microsoft" onclick="alert('Registering with Microsoft...')">Microsoft</button>
-            <button class="social-btn apple" onclick="alert('Registering with Apple...')">Apple</button>
-        </div>
-
-        <p class="switch-auth-link">Already have an account? <a href="#" onclick="switchModalToLogin()">Log in here</a></p>
-    </div>
+      <p class="switch-auth-link">Already have an account? <a href="#" onclick="switchModalToLogin()">Log in here</a></p>
+  </div>
 </div>
+
 
 <div id="joinSessionModal" class="modal">
     <div class="modal-content session-modal-content">

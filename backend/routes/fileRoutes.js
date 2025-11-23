@@ -1,21 +1,25 @@
-const express = require('express');
+import express from 'express';
+import { uploadSingle, handleUploadError } from '../middleware/uploadMiddleware.js';
+import { uploadFile, getFiles, downloadFile, deleteFile } from '../controllers/fileController.js';
+import { protect } from '../middleware/authMiddleware.js';
+
 const router = express.Router();
-const {
-  uploadFile,
-  getFiles,
-  downloadFile,
-  deleteFile
-} = require('../controllers/fileController');
-const { protect } = require('../middleware/authMiddleware');
-const { uploadSingle, handleUploadError } = require('../middleware/uploadMiddleware');
 
-// Routes
-router.route('/')
-  .get(protect, getFiles)
-  .post(protect, uploadSingle('file'), handleUploadError, uploadFile);
+// Upload file
+router.post('/upload', protect, (req, res, next) => {
+  uploadSingle(req, res, (err) => {
+    if (err) return handleUploadError(err, req, res, next);
+    uploadFile(req, res);
+  });
+});
 
+// Get all files
+router.get('/', protect, getFiles);
+
+// Download file
 router.get('/:id/download', protect, downloadFile);
+
+// Delete file
 router.delete('/:id', protect, deleteFile);
 
-module.exports = router;
-
+export default router;

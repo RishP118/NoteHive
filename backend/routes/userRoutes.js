@@ -1,44 +1,26 @@
-const express = require('express');
-const router = express.Router();
-const { body } = require('express-validator');
-const {
-  register,
-  login,
-  getMe,
-  updateProfile
-} = require('../controllers/userController');
-const { protect } = require('../middleware/authMiddleware');
+import { Router } from 'express';
+import { body } from 'express-validator';
+import { registerUser, loginUser, getMe, updateProfile } from '../controllers/userController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
-// Validation rules
+const router = Router();
+
 const registerValidation = [
-  body('username')
-    .trim()
-    .isLength({ min: 3, max: 30 })
-    .withMessage('Username must be between 3 and 30 characters'),
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters')
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 chars'),
+  body('email').isEmail().normalizeEmail().withMessage('Provide valid email'),
+  body('role').isIn(['student', 'teacher']).withMessage('Role must be student or teacher'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 chars')
 ];
 
 const loginValidation = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
+  body('email').isEmail().normalizeEmail().withMessage('Provide valid email'),
+  body('password').notEmpty().withMessage('Password is required')
 ];
 
-// Routes
-router.post('/register', registerValidation, register);
-router.post('/login', loginValidation, login);
+router.post('/register', registerValidation, registerUser);
+router.post('/login', loginValidation, loginUser);
 router.get('/me', protect, getMe);
 router.put('/me', protect, updateProfile);
 
-module.exports = router;
-
+export default router;

@@ -1,113 +1,35 @@
-const axios = require('axios');
-const settings = require('../config/settings');
+import axios from 'axios';
+import jwt from 'jsonwebtoken';
 
-// Cache for access token (Zoom tokens expire after 1 hour)
-let accessToken = null;
-let tokenExpiry = null;
+const ZOOM_API_KEY = process.env.ZOOM_API_KEY;
+const ZOOM_API_SECRET = process.env.ZOOM_API_SECRET;
+const ZOOM_USER_ID = process.env.ZOOM_USER_ID;
 
-/**
- * Get Zoom OAuth access token
- * Uses Server-to-Server OAuth (recommended for server-side apps)
- */
-async function getZoomAccessToken() {
-  // Return cached token if still valid
-  if (accessToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return accessToken;
-  }
+const generateZoomToken = () => {
+  return jwt.sign({ iss: ZOOM_API_KEY, exp: Math.floor(Date.now() / 1000) + 60 * 5 }, ZOOM_API_SECRET);
+};
 
-  if (!settings.ZOOM_ACCOUNT_ID || !settings.ZOOM_CLIENT_ID || !settings.ZOOM_CLIENT_SECRET) {
-    throw new Error('Zoom credentials not configured');
-  }
-
+const createMeeting = async ({ title, date, time, duration }) => {
   try {
-    const authString = Buffer.from(`${settings.ZOOM_CLIENT_ID}:${settings.ZOOM_CLIENT_SECRET}`).toString('base64');
-    
+    const meetingStartTime = `${date}T${time}:00`;
+    const token = generateZoomToken();
     const response = await axios.post(
-      `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${settings.ZOOM_ACCOUNT_ID}`,
-      {},
+      `https://api.zoom.us/v2/users/${ZOOM_USER_ID}/meetings`,
       {
-        headers: {
-          'Authorization': `Basic ${authString}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
+        topic: title,
+        type: 2,
+        start_time: meetingStartTime,
+        duration: duration || 30,
+        timezone: "Asia/Kolkata",
+        settings: { host_video: true, participant_video: true, join_before_host: false, mute_upon_entry: true }
+      },
+      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
     );
-
-    accessToken = response.data.access_token;
-    // Set expiry to 50 minutes (tokens last 1 hour, refresh early)
-    tokenExpiry = Date.now() + (50 * 60 * 1000);
-    
-    return accessToken;
+    return { success: true, meetingId: response.data.id, joinUrl: response.data.join_url, startUrl: response.data.start_url };
   } catch (error) {
-    console.error('Error getting Zoom access token:', error.response?.data || error.message);
-    throw new Error('Failed to authenticate with Zoom');
-  }
-}
-
-/**
- * Create a Zoom meeting
- */
-exports.createMeeting = async (meetingData) => {
-  try {
-    const token = await getZoomAccessToken();
-    
-    // Format date and time for Zoom
-    const { title, date, time, duration = 60 } = meetingData;
-    const [year, month, day] = date.split('-');
-    const [hours, minutes] = time.split(':');
-    
-    // Create ISO 8601 datetime string
-    const startTime = new Date(`${year}-${month}-${day}T${hours}:${minutes}:00`).toISOString();
-    
-    const meetingPayload = {
-      topic: title,
-      type: 2, // Scheduled meeting
-      start_time: startTime,
-      duration: duration, // in minutes
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      settings: {
-        host_video: true,
-        participant_video: true,
-        join_before_host: false,
-        mute_upon_entry: false,
-        watermark: false,
-        use_pmi: false,
-        approval_type: 0, // Automatically approve
-        audio: 'both',
-        auto_recording: 'none'
-      }
-    };
-
-    const response = await axios.post(
-      'https://api.zoom.us/v2/users/me/meetings',
-      meetingPayload,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    return {
-      success: true,
-      meeting: {
-        id: response.data.id,
-        topic: response.data.topic,
-        start_time: response.data.start_time,
-        duration: response.data.duration,
-        join_url: response.data.join_url,
-        start_url: response.data.start_url,
-        password: response.data.password,
-        meeting_number: response.data.id
-      }
-    };
-  } catch (error) {
-    console.error('Error creating Zoom meeting:', error.response?.data || error.message);
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message || 'Failed to create Zoom meeting'
-    };
+    console.error("Zoom API Error:", error.response?.data || error.message);
+    return { success: false, error: error.response?.data || "Zoom API error" };
   }
 };
 
+export default { createMeeting };

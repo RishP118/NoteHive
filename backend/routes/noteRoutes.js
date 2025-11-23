@@ -1,17 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const { body } = require('express-validator');
-const {
-  createNote,
-  getNotes,
-  getNote,
-  updateNote,
-  deleteNote,
-  addCollaborator
-} = require('../controllers/noteController');
-const { protect } = require('../middleware/authMiddleware');
+import { Router } from 'express';
+import { body } from 'express-validator';
+import { createNote, getNotes, getNote, updateNote, deleteNote, addCollaborator } from '../controllers/noteController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
-// Validation rules
+const router = Router();
+
 const noteValidation = [
   body('title')
     .trim()
@@ -24,7 +17,6 @@ const noteValidation = [
     .withMessage('Content is required')
 ];
 
-// Routes
 router.route('/')
   .get(protect, getNotes)
   .post(protect, noteValidation, createNote);
@@ -36,5 +28,4 @@ router.route('/:id')
 
 router.post('/:id/collaborators', protect, addCollaborator);
 
-module.exports = router;
-
+export default router;

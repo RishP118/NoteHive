@@ -1,193 +1,106 @@
-const User = require('../models/User');
-const { validationResult } = require('express-validator');
+import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import * as settings from '../config/settings.js';
 
 // @desc    Register new user
-// @route   POST /api/users/register
-// @access  Public
-exports.register = async (req, res) => {
+export const registerUser = async (req, res) => {
   try {
-    // Check validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
+    const { name, username, email, password, role } = req.body;
 
-    const { username, email, password, firstName, lastName } = req.body;
+    if (!name || !username || !email || !password || !role)
+      return res.status(400).json({ message: 'Please fill all fields' });
 
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: 'Email already in use' });
 
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        error: 'User with this email or username already exists'
-      });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = await User.create({
-      username,
-      email,
-      password,
-      profile: {
-        firstName,
-        lastName
-      }
+      name, username, email, password: hashedPassword, role
     });
 
-    // Generate token
-    const token = user.generateToken();
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      settings.JWT_SECRET,
+      { expiresIn: settings.JWT_EXPIRE }
+    );
 
     res.status(201).json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          profile: user.profile
-        },
-        token
-      }
+      message: 'User registered successfully',
+      token,
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, role: user.role }
     });
+
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error during registration'
-    });
+    res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
 
 // @desc    Login user
-// @route   POST /api/users/login
-// @access  Public
-exports.login = async (req, res) => {
+export const loginUser = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-
     const { email, password } = req.body;
 
-    // Find user and include password
-    const user = await User.findOne({ email }).select('+password');
+    if (!email || !password)
+      return res.status(400).json({ message: 'Please provide email and password' });
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-    }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-    // Check password
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        error: 'Account is deactivated'
-      });
-    }
-
-    // Generate token
-    const token = user.generateToken();
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      settings.JWT_SECRET,
+      { expiresIn: settings.JWT_EXPIRE }
+    );
 
     res.json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          profile: user.profile
-        },
-        token
-      }
+      message: 'Login successful',
+      token,
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, role: user.role }
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error during login'
-    });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Get current user
-// @route   GET /api/users/me
-// @access  Private
-exports.getMe = async (req, res) => {
+// @desc    Get current logged-in user
+export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .populate('studyGroups', 'name description')
-      .populate('notes', 'title createdAt');
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.json({
-      success: true,
-      data: { user }
+      user: { id: user._id, name: user.name, username: user.username, email: user.email, role: user.role }
     });
   } catch (error) {
-    console.error('Get me error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
+    console.error('GetMe error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
 // @desc    Update user profile
-// @route   PUT /api/users/me
-// @access  Private
-exports.updateProfile = async (req, res) => {
+export const updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, bio, avatar } = req.body;
+    const { name, username, role } = req.body;
 
-    const user = await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
-      {
-        $set: {
-          'profile.firstName': firstName,
-          'profile.lastName': lastName,
-          'profile.bio': bio,
-          'profile.avatar': avatar
-        }
-      },
-      {
-        new: true,
-        runValidators: true
-      }
+      { name, username, role },
+      { new: true, runValidators: true }
     );
 
     res.json({
-      success: true,
-      data: { user }
+      message: 'Profile updated successfully',
+      user: { id: updatedUser._id, name: updatedUser.name, username: updatedUser.username, email: updatedUser.email, role: updatedUser.role }
     });
   } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
+    console.error('UpdateProfile error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
-
