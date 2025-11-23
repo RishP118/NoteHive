@@ -451,6 +451,33 @@
 
 
 <script src="software.js.js"></script>
+<script>
+// Check login status on page load
+function getCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem('notehive_current_user') || sessionStorage.getItem('user') || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function checkAuthOnLoad() {
+  const user = getCurrentUser();
+  if (!user || !user.id) {
+    // Not logged in, show login modal or redirect
+    if (typeof openLoginModal === 'function') {
+      openLoginModal();
+    } else {
+      window.location.href = 'softwareproject.html'; // fallback
+    }
+  } else {
+    // Optionally update UI to show logged-in state
+    // e.g., document.getElementById('login-btn').style.display = 'none';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', checkAuthOnLoad);
+</script>
 </body>
 </html>
 

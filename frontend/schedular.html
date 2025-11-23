@@ -181,75 +181,27 @@
               title: t,
               date: d,
               time: tm,
-              zoomMeeting: zoomResult.meeting,
-              createdAt: new Date().toISOString()
-            }); 
+              zoomMeeting: {
+                join_url: zoomResult.joinUrl || zoomResult.join_url,
+                meeting_number: zoomResult.meetingId || zoomResult.meeting_number,
+                password: zoomResult.password || '',
+                start_url: zoomResult.startUrl || zoomResult.start_url
+              }
+            });
             setAll(arr);
-            
-            // Show success message with prominent Zoom link
-            $("#msg").textContent="✅ Zoom meeting created successfully!"; 
-            $("#msg").style.color="#22c55e";
-            
-            // Display Zoom meeting details prominently
+            render();
+            // Show Zoom link to user
             zoomSuccess.style.display = "block";
-            zoomSuccess.innerHTML = `
-              <div class="zoom-success">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                  <i data-feather="check-circle" style="color:#10b981"></i>
-                  <strong style="color:#10b981">Zoom Meeting Created</strong>
-                </div>
-                <div class="zoom-success-link">
-                  <a href="${zoomResult.meeting.join_url}" target="_blank" id="zoom-join-link">
-                    ${zoomResult.meeting.join_url}
-                  </a>
-                  <button class="copy-btn" data-copy="${zoomResult.meeting.join_url}" title="Copy link">
-                    <i data-feather="copy"></i> Copy
-                  </button>
-                </div>
-                ${zoomResult.meeting.password ? `
-                  <div style="margin-top:8px;font-size:12px;color:var(--muted)">
-                    Password: <strong style="color:var(--ink)">${zoomResult.meeting.password}</strong>
-                    <button class="copy-btn" data-copy="${zoomResult.meeting.password}" style="margin-left:8px;padding:4px 8px;font-size:11px" title="Copy password">
-                      <i data-feather="copy"></i>
-                    </button>
-                  </div>
-                ` : ''}
-                ${zoomResult.meeting.meeting_number ? `
-                  <div style="margin-top:6px;font-size:12px;color:var(--muted)">
-                    Meeting ID: <strong style="color:var(--ink)">${zoomResult.meeting.meeting_number}</strong>
-                  </div>
-                ` : ''}
-                <div style="margin-top:10px;font-size:12px;color:var(--muted)">
-                  The meeting link has been saved and will appear in your upcoming classes list.
-                </div>
-              </div>
-            `;
+            zoomSuccess.innerHTML = `<div class='zoom-success'>Meeting scheduled!<br>Zoom link: <a href='${zoomResult.joinUrl || zoomResult.join_url}' target='_blank' class='zoom-link'>${zoomResult.joinUrl || zoomResult.join_url}</a></div>`;
+            createBtn.disabled = false;
+            createBtn.innerHTML = originalText;
             feather.replace();
-            
-            // Auto-hide success message after 10 seconds (optional)
-            setTimeout(() => {
-              zoomSuccess.style.display = "none";
-            }, 30000);
-            
-            $("#title").value=""; 
-            $("#date").value=""; 
-            $("#time").value="";
-            render();
           } else {
-            // If Zoom creation fails, still save locally but show warning
-            zoomSuccess.style.display = "none"; // Hide success box on error
-            const arr=getAll(); 
-            arr.push({
-              title: t,
-              date: d,
-              time: tm,
-              zoomError: zoomResult.error,
-              createdAt: new Date().toISOString()
-            }); 
-            setAll(arr);
-            $("#msg").textContent=`Meeting saved locally, but Zoom creation failed: ${zoomResult.error}`; 
-            $("#msg").style.color="#f97316";
-            render();
+            zoomSuccess.style.display = "block";
+            zoomSuccess.innerHTML = `<div class='zoom-success' style='color:#ef4444'>Error: ${zoomResult.error || 'Could not create Zoom meeting.'}</div>`;
+            createBtn.disabled = false;
+            createBtn.innerHTML = originalText;
+            feather.replace();
           }
         } catch (error) {
           // Fallback: save locally if API call fails

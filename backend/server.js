@@ -27,7 +27,7 @@ const server = http.createServer(app);
 
 const io = new SocketIO(server, {
   cors: {
-    origin: settings.CORS_ORIGIN || '*', // Allow your frontend origin
+    origin: true, // Allow all origins for development
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -39,7 +39,7 @@ connectDB();
 // Security & Middleware
 app.use(helmet());
 app.use(cors({
-  origin: 'http://127.0.0.1:5500',
+  origin: true, // Allow all origins for development
   credentials: true
 }));
 
@@ -77,6 +77,8 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/zoom', zoomRoutes);
+import sessionRoutes from './routes/sessionRoutes.js';
+app.use('/api/session', sessionRoutes);
 
 // 404 handler (keep at the end)
 app.use((req, res) => {

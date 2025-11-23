@@ -236,6 +236,8 @@ async function registerUser() {
         }
 
         sessionStorage.setItem('token', data.token);
+            // Also store token in localStorage for scheduler and other pages
+            localStorage.setItem('token', data.token);
         sessionStorage.setItem('user', JSON.stringify({
             id: data.user.id,
             name: data.user.name,
@@ -244,7 +246,25 @@ async function registerUser() {
             role: data.user.role
         }));
 
-        window.location.href = 'home.html';
+        // Also store in localStorage for dashboard login detection
+        localStorage.setItem('notehive_current_user', JSON.stringify({
+            id: data.user.id,
+            name: data.user.name,
+            username: data.user.username,
+            email: data.user.email,
+            role: data.user.role
+        }));
+
+        // Redirect based on role
+        if (data.user.role === 'teacher') {
+            window.location.href = 'index.html'; // Teacher dashboard
+        } else if (data.user.role === 'student') {
+            window.location.href = 'studindex.html.html'; // Student dashboard
+        } else if (data.user.role === 'admin') {
+            window.location.href = 'admin-dashboard.html'; // Admin dashboard (create this file if needed)
+        } else {
+            window.location.href = 'index.html'; // Default fallback
+        }
     } catch (err) {
         errorDiv.style.display = 'block';
         errorDiv.innerText = 'Cannot connect to server. Please make sure backend is running.';

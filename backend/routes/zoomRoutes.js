@@ -13,14 +13,36 @@ const meetingValidation = [
 
 router.post('/create-meeting', protect, meetingValidation, async (req, res) => {
   try {
-    const { title, date, time, duration } = req.body;
+    const { title, date, time, duration, noteId } = req.body;
     const meetingDateTime = new Date(`${date}T${time}:00`);
     if (meetingDateTime < new Date()) {
       return res.status(400).json({ success: false, error: 'Meeting time must be in the future' });
     }
     const result = await zoomService.createMeeting({ title, date, time, duration });
-    if (result.success) res.json(result);
-    else res.status(500).json(result);
+    if (result.success) {
+      // Save meeting info in CollaborationSession
+      try {
+        const CollaborationSession = (await import('../models/CollaborationSession.js')).default;
+        await CollaborationSession.create({
+          noteId: noteId || null,
+          meetingId: result.meetingId,
+          joinUrl: result.joinUrl,
+          startUrl: result.startUrl,
+          title,
+          date,
+          time,
+          duration: duration || 30,
+          createdBy: req.user.id,
+          lastActivity: new Date()
+        });
+      } catch (dbErr) {
+        console.error('Error saving session to MongoDB:', dbErr);
+        // Don't block response if DB save fails
+      }
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
   } catch (error) {
     console.error('Error in create-meeting endpoint:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });

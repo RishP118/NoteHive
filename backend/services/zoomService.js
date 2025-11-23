@@ -1,18 +1,48 @@
-import axios from 'axios';
-import jwt from 'jsonwebtoken';
 
-const ZOOM_API_KEY = process.env.ZOOM_API_KEY;
-const ZOOM_API_SECRET = process.env.ZOOM_API_SECRET;
+import axios from 'axios';
+
+const ZOOM_ACCOUNT_ID = process.env.ZOOM_ACCOUNT_ID;
+const ZOOM_CLIENT_ID = process.env.ZOOM_CLIENT_ID;
+const ZOOM_CLIENT_SECRET = process.env.ZOOM_CLIENT_SECRET;
 const ZOOM_USER_ID = process.env.ZOOM_USER_ID;
 
-const generateZoomToken = () => {
-  return jwt.sign({ iss: ZOOM_API_KEY, exp: Math.floor(Date.now() / 1000) + 60 * 5 }, ZOOM_API_SECRET);
+// Get OAuth access token from Zoom
+const getZoomAccessToken = async () => {
+  try {
+    const response = await axios.post('https://zoom.us/oauth/token', null, {
+      params: {
+        grant_type: 'account_credentials',
+        account_id: ZOOM_ACCOUNT_ID
+      },
+      auth: {
+        username: ZOOM_CLIENT_ID,
+        password: ZOOM_CLIENT_SECRET
+      },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    return response.data.access_token;
+  } catch (error) {
+    console.error('Zoom OAuth Error:', {
+      message: error.message,
+      response: error.response?.data,
+      config: error.config,
+      env: {
+        ZOOM_ACCOUNT_ID,
+        ZOOM_CLIENT_ID,
+        ZOOM_CLIENT_SECRET,
+        ZOOM_USER_ID
+      }
+    });
+    throw new Error('Failed to get Zoom access token');
+  }
 };
 
 const createMeeting = async ({ title, date, time, duration }) => {
   try {
     const meetingStartTime = `${date}T${time}:00`;
-    const token = generateZoomToken();
+    const accessToken = await getZoomAccessToken();
     const response = await axios.post(
       `https://api.zoom.us/v2/users/${ZOOM_USER_ID}/meetings`,
       {
@@ -23,11 +53,17 @@ const createMeeting = async ({ title, date, time, duration }) => {
         timezone: "Asia/Kolkata",
         settings: { host_video: true, participant_video: true, join_before_host: false, mute_upon_entry: true }
       },
-      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+      { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } }
     );
     return { success: true, meetingId: response.data.id, joinUrl: response.data.join_url, startUrl: response.data.start_url };
   } catch (error) {
-    console.error("Zoom API Error:", error.response?.data || error.message);
+    console.error("Zoom API Error:", {
+      message: error.message,
+      response: error.response?.data,
+      config: error.config,
+      accessToken,
+      ZOOM_USER_ID
+    });
     return { success: false, error: error.response?.data || "Zoom API error" };
   }
 };

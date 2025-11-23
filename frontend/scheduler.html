@@ -82,30 +82,79 @@
       arr.forEach((it,idx)=>{
         const row=document.createElement("div");
         row.className="item";
-        row.innerHTML=`<div><strong>${it.title}</strong><div class="muted">${it.date} • ${it.time}</div></div>
+        let zoomInfo = '';
+        if (it.zoomMeeting && it.zoomMeeting.join_url) {
+          zoomInfo = `<div style='margin-top:6px'><a href='${it.zoomMeeting.join_url}' target='_blank' style='color:var(--blue);text-decoration:underline;'>Zoom Link</a></div>`;
+        }
+        row.innerHTML=`<div><strong>${it.title}</strong><div class="muted">${it.date} • ${it.time}</div>${zoomInfo}</div>
                        <div style="display:flex;gap:8px"><button class="btn red" data-del="${idx}"><i data-feather="trash-2"></i> Delete</button></div>`;
         list.appendChild(row);
       });
       feather.replace();
     }
 
-    $("#create").addEventListener("click",()=>{
-      const t=$("#title").value.trim(), d=$("#date").value, tm=$("#time").value;
-      if(!t || !d || !tm){ $("#msg").textContent="Fill in title, date and time."; $("#msg").style.color="#f97316"; return; }
-      if($("#net-stable").checked){
-        const arr=getAll(); arr.push({title:t,date:d,time:tm}); setAll(arr);
-        $("#msg").textContent="Meeting scheduled successfully. Invitations sent."; $("#msg").style.color="#22c55e";
-        $("#title").value=""; $("#date").value=""; $("#time").value="";
-        render();
-      } else {
-        $("#msg").textContent="Network unstable. Draft saved locally. Try again when stable."; $("#msg").style.color="#f97316";
-      }
-    });
 
     $("#list").addEventListener("click",(e)=>{
       const btn=e.target.closest("button"); if(!btn) return;
       if(btn.dataset.del){
         const idx=+btn.dataset.del; const arr=getAll(); arr.splice(idx,1); setAll(arr); render();
+      }
+    });
+
+    $("#create").addEventListener("click", async ()=>{
+      const t=$("#title").value.trim(), d=$("#date").value, tm=$("#time").value;
+      const msgDiv = $("#msg");
+      msgDiv.textContent = "";
+      if(!t || !d || !tm){ msgDiv.textContent="Please fill all fields."; msgDiv.style.color="#f97316"; return; }
+      if($("#net-stable").checked){
+        // Get user info
+        let user = null;
+        try {
+          user = JSON.parse(localStorage.getItem('notehive_current_user') || sessionStorage.getItem('user') || 'null');
+        } catch {}
+        if (!user || !user.id) {
+          msgDiv.textContent = 'You must be logged in to schedule.';
+          msgDiv.style.color = '#f97316';
+          return;
+        }
+        // Create Zoom meeting and save in backend
+        let zoomRes;
+        try {
+          zoomRes = await fetch('http://localhost:3000/api/zoom/create-meeting', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ title: t, date: d, time: tm, duration: 30 })
+          });
+          zoomRes = await zoomRes.json();
+          if (!zoomRes.success) throw new Error(zoomRes.error || 'Zoom API error');
+        } catch (err) {
+          msgDiv.textContent = 'Error scheduling Zoom meeting: ' + err.message;
+          msgDiv.style.color = '#ef4444';
+          return;
+        }
+        // Save to localStorage with Zoom meeting info
+        const arr=getAll(); 
+        arr.push({
+          title: t,
+          date: d,
+          time: tm,
+          zoomMeeting: {
+            join_url: zoomRes.joinUrl || zoomRes.join_url,
+            meeting_number: zoomRes.meetingId || zoomRes.meeting_number,
+            password: zoomRes.password || '',
+            start_url: zoomRes.startUrl || zoomRes.start_url
+          }
+        });
+        setAll(arr);
+        render();
+        // Show Zoom link to user
+        msgDiv.innerHTML = `<span style='color:var(--green)'>Meeting scheduled! Zoom link: <a href='${zoomRes.joinUrl || zoomRes.join_url}' target='_blank'>${zoomRes.joinUrl || zoomRes.join_url}</a></span>`;
+        $("#title").value=""; $("#date").value=""; $("#time").value="";
+      } else {
+        msgDiv.textContent="Network unstable. Draft saved locally. Try again when stable."; msgDiv.style.color="#f97316";
       }
     });
 
