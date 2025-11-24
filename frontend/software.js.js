@@ -246,20 +246,36 @@ function saveUser(userData) {
     localStorage.setItem('notehive_users', JSON.stringify(users));
 }
 
-function findUser(emailOrUsername, password) {
-    const users = getStoredUsers();
-    return users.find(user => 
-        (user.email === emailOrUsername || user.username === emailOrUsername) &&
-        user.password === password
-    );
+async function findUser(emailOrUsername, password) {
+    try {
+        const response = await fetch('http://localhost:3000/api/users/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: emailOrUsername, // or username: emailOrUsername
+                password: password
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Invalid credentials');
+        }
+
+        const data = await response.json();
+        return data.user;
+    } catch (error) {
+        console.error('Find user error:', error);
+        return null;
+    }
 }
 
-function loginUser() {
+async function loginUser() {
     const emailOrUsername = document.getElementById("login-email").value.trim();
     const password = document.getElementById("login-password").value;
     const errorDiv = document.getElementById("login-error");
 
-    // Clear previous errors
     errorDiv.style.display = 'none';
     errorDiv.textContent = '';
 
@@ -269,41 +285,76 @@ function loginUser() {
         return;
     }
 
-    // Find user
-    const user = findUser(emailOrUsername, password);
+    try {
+        const apiUrl = 'http://localhost:3000/api/users/login';
+        console.log('Attempting to connect to:', apiUrl);
+        
+        // Test if we can reach the server
+        try {
+            const testResponse = await fetch('http://localhost:3000', { method: 'HEAD' });
+            console.log('Server reachable:', testResponse.ok);
+        } catch (testError) {
+            console.error('Cannot reach server:', testError);
+            throw new Error('Cannot connect to the server. Please make sure the backend is running.');
+        }
 
-    if (!user) {
-        errorDiv.textContent = "Invalid email/username or password. Please try again.";
-        errorDiv.style.display = 'block';
-        return;
-    }
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                email: emailOrUsername,
+                password: password
+            })
+        });
 
-    // Login successful
+        console.log('Response status:', response.status);
+        
+        let data;
+        try {
+            data = await response.json();
+            console.log('Response data:', data);
+        } catch (e) {
+            console.error('Failed to parse JSON response:', e);
+            throw new Error('Invalid response from server. Please check the backend logs.');
+        }
+
+        if (!response.ok) {
+            const errorMessage = data.message || data.error || 'Login failed. Please check your credentials.';
+            console.error('Login failed:', errorMessage);
+            
+            // More specific error messages
+            if (response.status === 404) {
+                throw new Error('The login endpoint was not found. Please check the backend routes.');
+            } else if (response.status === 401) {
+                throw new Error('Invalid email or password. Please try again.');
+            } else {
+                throw new Error(errorMessage);
+            }
+        }
+
+        if (!data.token) {
+            console.error('No token in response:', data);
+            throw new Error('Authentication failed. No token received from server.');
+        }
+
+        console.log('Login successful, storing token and user data');
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         isUserLoggedIn = true;
-    
-    // Store current user in session
-    localStorage.setItem('notehive_current_user', JSON.stringify({
-        fullName: user.fullName,
-        username: user.username,
-        email: user.email,
-        role: user.role
-    }));
-
-    // Close modal
         closeLoginModal();
 
-    // Redirect based on role
-    if (user.role === 'teacher') {
-        alert(`Login successful! Welcome back, ${user.fullName}. Redirecting to Teacher Dashboard...`);
-        window.location.href = 'index.html';
-    } else if (user.role === 'student') {
-        alert(`Login successful! Welcome back, ${user.fullName}. Redirecting to Student Dashboard...`);
-        window.location.href = 'studindex.html.html';
-    } else {
-        alert(`Login successful! Welcome back, ${user.fullName}.`);
+        // Redirect based on user role
+        window.location.href = data.user.role === 'teacher' ? 'index.html' : 'studindex.html.html';
+
+    } catch (error) {
+        console.error('Login error:', error);
+        errorDiv.textContent = error.message || 'Login failed. Please try again.';
+        errorDiv.style.display = 'block';
     }
 }
-
 
 async function registerUser() {
     const name = document.getElementById('register-name').value.trim();

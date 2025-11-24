@@ -17,7 +17,7 @@ const noteValidation = [
     .withMessage('Content is required')
 ];
 
-// Use optionalAuth for GET to allow viewing notes without auth (for development)
+// Use optionalAuth for GET to allow viewing notes without auth (for development) 
 // Use protect for POST/PUT/DELETE to require auth for modifications
 router.route('/')
   .get(optionalAuth, getNotes)

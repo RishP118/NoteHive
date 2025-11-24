@@ -13,7 +13,7 @@ export const createNote = async (req, res) => {
       content,
       tags: tags || [],
       subject,
-      isPublic: isPublic !== undefined ? isPublic : false, // Use provided value, default to false
+      isPublic: isPublic !== undefined ? isPublic : false, // Use provided value, default to false 
       userId: req.user.id,
       studyGroupId: studyGroupId || null,
       lastEditedBy: req.user.id

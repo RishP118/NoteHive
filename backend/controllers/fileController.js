@@ -9,7 +9,7 @@ import {
 } from '../config/settings.js';
 
 // @desc    Upload file
-// @route   POST /api/files/upload
+// @route   POST /api/files/upload 
 // @access  Private
 export const uploadFile = async (req, res) => {
   try {

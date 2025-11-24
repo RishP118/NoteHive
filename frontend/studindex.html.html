@@ -11,6 +11,17 @@
       --ok:#22c55e; --warn:#f97316;
       --r:18px; --shadow:0 10px 30px rgba(0,0,0,.55);
     }
+
+    .pill {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 0.8em;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
@@ -29,7 +40,7 @@
     .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.7}
     .nav-actions{display:flex;align-items:center;gap:10px}
 
-    /* Buttons */
+    /* B uttons */
     .btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:#1b1d23;color:var(--ink)}
     .btn i{width:18px;height:18px}
     .btn.ghost{background:transparent;border-color:#374151}
@@ -750,68 +761,182 @@
     /* ---------- Simple client-side search ---------- */
     $("#btn-search").addEventListener("click", doSearch);
     $("#global-search").addEventListener("keyup", e=>{ if(e.key === "Enter") doSearch(); });
-    async function doSearch(){
-      const q = ($("#s-query").value||"").trim().toLowerCase();
-      const subj = ($("#s-subject").value||"").trim();
-      const status = $("#search-status");
-      const rcon = $("#results");
-      rcon.innerHTML = "";
-      status.textContent = "Searching...";
-      
-      const token = getToken();
-      try {
-        // Build query params
-        const params = new URLSearchParams();
-        if (q) params.append("search", q);
-        if (subj) params.append("subject", subj);
-        
-        const res = await fetch(`${API_BASE_URL}/api/notes?${params.toString()}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        
-        if (!res.ok) {
-          throw new Error(`Search failed: ${res.status} ${res.statusText}`);
-        }
-        
-        const text = await res.text();
-        if (!text) {
-          throw new Error("Empty response from server");
-        }
-        
-        const data = JSON.parse(text);
-        
-        if (!data.success) {
-          throw new Error(data.error || "Search failed");
-        }
+    async function doSearch() {
+  const q = ($("#s-query").value || "").trim().toLowerCase();
+  const subj = ($("#s-subject").value || "").trim();
+  const status = $("#search-status");
+  const rcon = $("#results");
+  rcon.innerHTML = "";
+  status.textContent = "Searching...";
+  
+  const token = getToken();
+  try {
+    // Build query params
+    const params = new URLSearchParams();
+    if (q) params.append("search", q);
+    if (subj) params.append("subject", subj);
+    
+    // Search both notes and files
+    const [notesRes, filesRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/notes?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }),
+      fetch(`${API_BASE_URL}/api/files?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+    ]);
 
-        const notes = data.data.notes || [];
-        if(!notes.length){ 
-          status.textContent = "No results found."; 
-          return; 
-        } else { 
-          status.textContent = `${notes.length} result(s)`; 
-        }
-        
-        for(const note of notes){
-          const div = document.createElement("div");
-          div.className = "list-row";
-          const file = (note.attachments && note.attachments[0]?.fileId) || {};
-          const fileUrl = file.url || "#";
-          const filename = file.originalName || file.filename || "file";
-          
-          div.innerHTML = `<div><strong>${escapeHtml(note.title)}</strong><div class="muted">${escapeHtml(note.subject || "")} · ${new Date(note.createdAt).toLocaleString()} · ${escapeHtml(filename)}</div></div><div style="display:flex;gap:8px"><a class="btn" href="${fileUrl}" download="${filename}"><i data-feather="download"></i> Download</a><button class="btn" data-open>View</button></div>`;
-          rcon.appendChild(div);
-          div.querySelector('[data-open]').addEventListener('click', ()=>{
-            openModal(note.title, `<div class="muted">Preview for <strong>${escapeHtml(filename)}</strong></div><div style="margin-top:10px"><iframe src="${fileUrl}" style="width:100%;height:60vh;border-radius:8px;border:1px solid var(--line)"></iframe></div>`, `<button class="btn" id="sr-close">Close</button><a class="btn btn-blue" href="${fileUrl}" download="${filename}"><i data-feather="download"></i> Download</a>`);
-            $("#sr-close").onclick = closeModal;
-          });
-        }
-        feather.replace();
-      } catch (err) {
-        status.textContent = `Error: ${err.message}`;
-        console.error("Search error:", err);
-      }
+    const [notesData, filesData] = await Promise.all([
+      notesRes.json(),
+      filesRes.json()
+    ]);
+
+    if (!notesData.success) {
+      throw new Error(notesData.error || "Failed to search notes");
     }
+    if (!filesData.success) {
+      console.warn("File search failed:", filesData.error);
+    }
+
+    const notes = notesData.data?.notes || [];
+    const files = filesData.data?.files || [];
+    
+    // Combine and sort by creation date (newest first)
+    const allItems = [
+      ...notes.map(note => ({ ...note, type: 'note' })), 
+      ...files.map(file => ({ ...file, type: 'file' }))
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (!allItems.length) { 
+      status.textContent = "No results found."; 
+      return; 
+    } else { 
+      status.textContent = `${allItems.length} result(s)`; 
+    }
+    
+    for (const item of allItems) {
+      const div = document.createElement("div");
+      div.className = "list-row";
+      
+      if (item.type === 'note') {
+        const file = (item.attachments && item.attachments[0]?.fileId) || {};
+        const fileUrl = file.url || "#";
+        const filename = file.originalName || file.filename || "file";
+        
+        div.innerHTML = `
+          <div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <div class="muted">
+              ${escapeHtml(item.subject || "")} · 
+              ${new Date(item.createdAt).toLocaleString()} · 
+              <span class="pill">Note</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <a class="btn" href="${fileUrl}" download="${filename}">
+              <i data-feather="download"></i> Download
+            </a>
+            <button class="btn" data-open>View</button>
+          </div>
+        `;
+        
+        div.querySelector('[data-open]').addEventListener('click', () => {
+          openModal(
+            item.title,
+            `<div class="muted">
+              <strong>${escapeHtml(filename)}</strong> · 
+              ${escapeHtml(item.subject || "")} · 
+              ${new Date(item.createdAt).toLocaleString()}
+            </div>
+            <div style="margin-top:10px">
+              <iframe 
+                src="${fileUrl}" 
+                style="width:100%;height:60vh;border-radius:8px;border:1px solid var(--line)"
+                frameborder="0"
+              ></iframe>
+            </div>`, 
+            `<button class="btn" id="sr-close">Close</button>
+             <a class="btn btn-blue" href="${fileUrl}" download="${filename}">
+               <i data-feather="download"></i> Download
+             </a>`
+          );
+          $("#sr-close").onclick = closeModal;
+        });
+      } else {
+        // Handle direct file items (from files collection)
+        const fileUrl = item.url || `${API_BASE_URL}/uploads/${item.filename}`;
+        const filename = item.originalName || item.filename || "file";
+        
+        div.innerHTML = `
+          <div>
+            <strong>${escapeHtml(item.originalName || item.filename)}</strong>
+            <div class="muted">
+              ${item.tags?.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join(' ')} · 
+              ${new Date(item.uploadedAt || item.createdAt).toLocaleString()} · 
+              <span class="pill">File</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <a class="btn" href="${fileUrl}" download="${filename}">
+              <i data-feather="download"></i> Download
+            </a>
+            <button class="btn" data-open>View</button>
+          </div>
+        `;
+        
+        div.querySelector('[data-open]').addEventListener('click', () => {
+          const isPdf = filename.toLowerCase().endsWith('.pdf') || 
+                        (item.mimeType && item.mimeType === 'application/pdf');
+          
+          let previewContent;
+          if (isPdf) {
+            const pdfViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+            previewContent = `
+              <div style="width:100%;height:70vh;">
+                <iframe 
+                  src="${pdfViewerUrl}" 
+                  style="width:100%;height:100%;border-radius:8px;border:1px solid var(--line)"
+                  frameborder="0"
+                  allowfullscreen
+                ></iframe>
+              </div>`;
+          } else {
+            previewContent = `
+              <div style="width:100%;height:70vh;">
+                <iframe 
+                  src="${fileUrl}" 
+                  style="width:100%;height:100%;border-radius:8px;border:1px solid var(--line)"
+                  frameborder="0"
+                  allowfullscreen
+                ></iframe>
+              </div>`;
+          }
+          
+          openModal(
+            filename,
+            `<div class="muted">
+              ${item.tags?.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join(' ')} · 
+              ${new Date(item.uploadedAt || item.createdAt).toLocaleString()}
+            </div>
+            ${previewContent}`, 
+            `<button class="btn" id="sr-close">Close</button>
+             <a class="btn btn-blue" href="${fileUrl}" download="${filename}">
+               <i data-feather="download"></i> Download
+             </a>`
+          );
+          $("#sr-close").onclick = closeModal;
+        });
+      }
+      
+      rcon.appendChild(div);
+    }
+    
+    feather.replace();
+  } catch (err) {
+    status.textContent = `Error: ${err.message}`;
+    console.error("Search error:", err);
+  }
+}
 
     /* ---------- Quick shortcuts ---------- */
     $("#qa-upload").addEventListener("click", ()=>{ $("#upload").scrollIntoView({behavior:"smooth"}); });

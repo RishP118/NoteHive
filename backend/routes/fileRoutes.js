@@ -12,7 +12,7 @@ router.options('/upload', (req, res) => {
   res.sendStatus(200);
 });
 
-// Upload file (no auth required for demo/local dev)
+// Upload file (no auth required for demo/local dev) 
 // Must be defined before /:id routes to avoid route conflicts
 router.post('/upload', uploadSingle, async (req, res, next) => {
   try {

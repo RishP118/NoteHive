@@ -122,9 +122,31 @@
     
     // API configuration
     const API_BASE_URL = 'http://localhost:3000';
-    function getToken() {
-      return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
+function getToken() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (!token) {
+    console.error('No authentication token found');
+    return null;
+  }
+  
+  // Check if token is expired
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const isExpired = payload.exp * 1000 < Date.now();
+    if (isExpired) {
+      console.log('Token expired, attempting to refresh...');
+      // You might want to implement token refresh logic here
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+      return null;
     }
+  } catch (e) {
+    console.error('Error parsing token:', e);
+    return null;
+  }
+  
+  return token;
+}
 
     /* -------- Query params (mode/template) -------- */
     const params = new URLSearchParams(location.search);
@@ -215,57 +237,68 @@ $("#new-note").addEventListener("click", e => {
     subjectEl.addEventListener("change", markDirty);
 
     // Save draft to MongoDB
-    $("#btn-save").addEventListener("click", async () => {
-      saveLocal();
-      const title = titleEl.value.trim() || "Untitled Draft";
-      const content = doc.innerHTML.trim();
-      const subject = subjectEl.value || "Other";
-      const token = getToken();
+   // Replace the save draft event listener (around line 240) with this:
+$("#btn-save").addEventListener("click", saveDraft);
 
-      if (!token) {
-        alert("Please log in to save drafts.");
-        return;
-      }
+// Add this new function after the getToken() function
+async function saveDraft() {
+  saveLocal();
+  const title = titleEl.value.trim() || "Untitled Draft";
+  const content = doc.innerHTML.trim();
+  const subject = subjectEl.value || "Other";
+  const token = getToken();
 
-      try {
-        status.textContent = "Saving draft...";
-        const res = await fetch(`${API_BASE_URL}/api/notes`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            title: title + " (Draft)",
-            content: content,
-            subject: subject,
-            isPublic: false // Drafts are private
-          })
-        });
+  if (!token) {
+    alert("Please log in to save drafts.");
+    window.location.href = "index.html";
+    return;
+  }
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(errorText || "Failed to save draft");
-        }
-
-        const data = await res.json();
-        if (data.success) {
-          status.textContent = "Draft saved!";
-          loadSavedNotes(); // Refresh saved notes list
-          setTimeout(() => status.textContent = "Saved", 2000);
-        } else {
-          throw new Error(data.error || "Failed to save draft");
-        }
-      } catch (err) {
-        console.error("Save draft error:", err);
-        status.textContent = "Error: " + err.message;
-        status.style.color = "#ef4444";
-        setTimeout(() => {
-          status.textContent = "Saved locally";
-          status.style.color = "";
-        }, 3000);
-      }
+  try {
+    status.textContent = "Saving draft...";
+    const res = await fetch(`${API_BASE_URL}/api/notes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title: title.endsWith(" (Draft)") ? title : `${title} (Draft)`,
+        content: content,
+        subject: subject,
+        isPublic: false
+      })
     });
+
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+      alert("Your session has expired. Please log in again.");
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to save draft");
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      status.textContent = "Draft saved!";
+      loadSavedNotes();
+      setTimeout(() => status.textContent = "Saved", 2000);
+    }
+  } catch (err) {
+    console.error("Save draft error:", err);
+    status.textContent = `Error: ${err.message}`;
+    status.style.color = "#ef4444";
+    setTimeout(() => {
+      status.textContent = "Error saving draft";
+      status.style.color = "";
+    }, 3000);
+  }
+}
 
     // Publish note to MongoDB (appears in Uploaded Notes)
     $("#btn-publish").addEventListener("click", async () => {
@@ -330,121 +363,133 @@ $("#new-note").addEventListener("click", e => {
       }
     });
 
-    // Load saved notes (drafts) from MongoDB
-    async function loadSavedNotes() {
-      const list = $("#saved-notes-list");
-      const token = getToken();
+    /// Replace the existing loadSavedNotes function with this:
+async function loadSavedNotes() {
+  const list = $("#saved-notes-list");
+  const token = getToken();
 
-      if (!token) {
-        list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">Log in to see saved notes</li>';
-        return;
+  if (!token) {
+    list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">Please log in to see saved notes</li>';
+    return;
+  }
+
+  try {
+    list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">Loading...</li>';
+    const res = await fetch(`${API_BASE_URL}/api/notes`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
       }
+    });
 
-      try {
-        list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">Loading...</li>';
-        const res = await fetch(`${API_BASE_URL}/api/notes`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to load notes");
-        }
-
-        const text = await res.text();
-        if (!text) {
-          list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">No saved notes</li>';
-          return;
-        }
-
-        const data = JSON.parse(text);
-        if (!data.success) {
-          throw new Error(data.error || "Failed to load notes");
-        }
-
-        const notes = data.data.notes || [];
-        const drafts = notes.filter(n => n.title.includes("(Draft)") || !n.isPublic);
-        
-        if (drafts.length === 0) {
-          list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">No drafts saved</li>';
-          return;
-        }
-
-        list.innerHTML = "";
-        drafts.slice(0, 10).forEach(note => {
-          const li = document.createElement("li");
-          const isDraft = note.title.includes("(Draft)");
-          const displayTitle = isDraft ? note.title.replace(" (Draft)", "") : note.title;
-          li.innerHTML = `
-            <a href="#" data-note-id="${note._id}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
-              <div>
-                <strong style="font-size:13px">${displayTitle}</strong>
-                <div class="muted" style="font-size:11px">${note.subject || ""} • ${new Date(note.createdAt).toLocaleDateString()}</div>
-              </div>
-              <span class="muted" style="font-size:11px">${isDraft ? "Draft" : "Saved"}</span>
-            </a>
-          `;
-          list.appendChild(li);
-        });
-
-        // Add click handlers to load notes
-        $$("#saved-notes-list a[data-note-id]").forEach(a => {
-          a.addEventListener("click", async (e) => {
-            e.preventDefault();
-            const noteId = a.dataset.noteId;
-            await loadNoteIntoEditor(noteId);
-          });
-        });
-
-        feather.replace();
-      } catch (err) {
-        console.error("Load saved notes error:", err);
-        list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px;color:#ef4444">Error loading notes</li>';
-      }
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+      list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">Session expired. Please log in again.</li>';
+      return;
     }
 
-    // Load a specific note into the editor
-    async function loadNoteIntoEditor(noteId) {
-      const token = getToken();
-      if (!token) {
-        alert("Please log in to load notes.");
-        return;
-      }
-
-      try {
-        status.textContent = "Loading note...";
-        const res = await fetch(`${API_BASE_URL}/api/notes/${noteId}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to load note");
-        }
-
-        const text = await res.text();
-        const data = JSON.parse(text);
-
-        if (data.success && data.data.note) {
-          const note = data.data.note;
-          const isDraft = note.title.includes("(Draft)");
-          titleEl.value = isDraft ? note.title.replace(" (Draft)", "") : note.title;
-          doc.innerHTML = note.content || "<p></p>";
-          subjectEl.value = note.subject || "Other";
-          saveLocal();
-          status.textContent = "Note loaded";
-          setTimeout(() => status.textContent = "Ready", 2000);
-        } else {
-          throw new Error("Note not found");
-        }
-      } catch (err) {
-        console.error("Load note error:", err);
-        alert("Error loading note: " + err.message);
-        status.textContent = "Error";
-      }
+    if (!res.ok) {
+      throw new Error("Failed to load notes");
     }
+
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || "Failed to load notes");
+    }
+
+    const notes = data.data.notes || [];
+    const drafts = notes.filter(n => n.title.includes("(Draft)") || !n.isPublic);
+    
+    if (drafts.length === 0) {
+      list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px">No drafts saved</li>';
+      return;
+    }
+
+    list.innerHTML = "";
+    drafts.slice(0, 10).forEach(note => {
+      const li = document.createElement("li");
+      const isDraft = note.title.includes("(Draft)");
+      const displayTitle = isDraft ? note.title.replace(" (Draft)", "") : note.title;
+      li.innerHTML = `
+        <a href="#" data-note-id="${note._id}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+          <div>
+            <strong style="font-size:13px">${displayTitle}</strong>
+            <div class="muted" style="font-size:11px">${note.subject || ""} • ${new Date(note.createdAt).toLocaleDateString()}</div>
+          </div>
+          <span class="muted" style="font-size:11px">${isDraft ? "Draft" : "Saved"}</span>
+        </a>
+      `;
+      list.appendChild(li);
+    });
+
+    // Add click handlers to load notes
+    $$("#saved-notes-list a[data-note-id]").forEach(a => {
+      a.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const noteId = a.dataset.noteId;
+        await loadNoteIntoEditor(noteId);
+      });
+    });
+
+    feather.replace();
+  } catch (err) {
+    console.error("Load saved notes error:", err);
+    list.innerHTML = '<li class="muted" style="padding:8px;font-size:12px;color:#ef4444">Error loading notes. Please refresh the page.</li>';
+  }
+}
+// Replace the existing loadNoteIntoEditor function with this:
+async function loadNoteIntoEditor(noteId) {
+  const token = getToken();
+  if (!token) {
+    alert("Please log in to view notes.");
+    window.location.href = "index.html";
+    return;
+  }
+
+  try {
+    status.textContent = "Loading note...";
+    const res = await fetch(`${API_BASE_URL}/api/notes/${noteId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+      alert("Your session has expired. Please log in again.");
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || `Failed to load note: ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (data.success && data.data.note) {
+      const note = data.data.note;
+      const isDraft = note.title.includes("(Draft)");
+      titleEl.value = isDraft ? note.title.replace(" (Draft)", "") : note.title;
+      doc.innerHTML = note.content || "<p></p>";
+      subjectEl.value = note.subject || "Other";
+      saveLocal();
+      status.textContent = "Note loaded";
+      setTimeout(() => status.textContent = "Ready", 2000);
+    } else {
+      throw new Error("Note not found or invalid data format");
+    }
+  } catch (err) {
+    console.error("Load note error:", err);
+    status.textContent = `Error: ${err.message}`;
+    status.style.color = "#ef4444";
+    setTimeout(() => {
+      status.textContent = "Error loading note";
+      status.style.color = "";
+    }, 3000);
+  }
+}
 
     // Load saved notes on page load
     loadSavedNotes();

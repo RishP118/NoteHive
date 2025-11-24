@@ -252,31 +252,20 @@
 <div id="loginModal" class="modal">
     <div class="modal-content auth-form-container">
         <span class="close" onclick="closeLoginModal()">&times;</span>
-        <h2>Welcome to NoteHive</h2>
-        <p>Log in to access your notes and study sessions.</p>
-
+        <h2>Login to NoteHive</h2>
+        <div id="login-error" class="error-message" style="color: red; display: none;"></div>
         <form onsubmit="event.preventDefault(); loginUser();">
             <div class="form-group">
-                <label for="login-email">Email / Username</label>
-                <input type="text" id="login-email" required placeholder="name@example.com or username">
+                <label for="login-email">Email or Username</label>
+                <input type="text" id="login-email" required>
             </div>
             <div class="form-group">
                 <label for="login-password">Password</label>
-                <input type="password" id="login-password" required placeholder="Enter your password">
+                <input type="password" id="login-password" required>
             </div>
-            <div id="login-error" style="color: red; margin-bottom: 10px; display: none;"></div>
-            <button type="submit" class="submit-btn login-btn">Log In</button>
+            <button type="submit" class="btn btn-primary">Login</button>
+            <p>Don't have an account? <a href="#" onclick="switchModalToRegister()">Register here</a></p>
         </form>
-
-        <div class="social-login-divider">OR Log in with:</div>
-
-        <div class="social-login">
-            <button class="social-btn google" onclick="alert('Logging in with Google...')">Google</button>
-            <button class="social-btn microsoft" onclick="alert('Logging in with Microsoft...')">Microsoft</button>
-            <button class="social-btn apple" onclick="alert('Logging in with Apple...')">Apple</button>
-        </div>
-
-        <p class="switch-auth-link">Don't have an account? <a href="#" onclick="switchModalToRegister()">Register here</a></p>
     </div>
 </div>
 
