@@ -51,6 +51,7 @@ async function uploadNotesAndCreateNote({
                 title,
                 content: desc || " ",
                 subject,
+                isPublic: true,
                 attachments: [{ fileId, filename: file.name }]
             })
         });
@@ -80,12 +81,18 @@ async function renderNotesListFromAPI({ notesListId = "notes-list", userToken = 
         const data = await res.json();
         if (!data.success) throw new Error(data.error || "Failed to fetch notes");
         const notes = data.data.notes || [];
-        if (!notes.length) {
+        const uploadedNotes = notes.filter(note => {
+            const title = note.title || '';
+            const looksLikeDraft = title.includes('(Draft)') || note.isPublic === false;
+            return !looksLikeDraft;
+        });
+
+        if (!uploadedNotes.length) {
             container.innerHTML = "<div class='muted'>No notes uploaded yet.</div>";
             return;
         }
         container.innerHTML = "";
-        for (const note of notes) {
+        for (const note of uploadedNotes) {
             const row = document.createElement("div");
             row.className = "list-row";
             row.dataset.note = note.title;
@@ -110,6 +117,59 @@ async function renderNotesListFromAPI({ notesListId = "notes-list", userToken = 
 }
 // --- Global State for Demonstration ---
 let isUserLoggedIn = false; // Tracks login status (Starts false)
+
+// Check for existing session on page load
+async function checkExistingSession() {
+    try {
+        // Check for token in localStorage or sessionStorage
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const userStr = localStorage.getItem('user') || sessionStorage.getItem('user') || localStorage.getItem('notehive_current_user');
+        
+        if (!token) {
+            console.log('No token found in storage');
+            return false;
+        }
+
+        // Validate token with backend
+        const response = await fetch('http://localhost:3000/api/users/me', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Token is valid, restore session
+            isUserLoggedIn = true;
+            
+            // Ensure user data is in both storages
+            if (data.user) {
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('notehive_current_user', JSON.stringify(data.user));
+                sessionStorage.setItem('token', token);
+                sessionStorage.setItem('user', JSON.stringify(data.user));
+            }
+            
+            console.log('Existing session restored:', data.user?.email);
+            return true;
+        } else {
+            // Token is invalid, clear storage
+            console.log('Token validation failed, clearing storage');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('notehive_current_user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error checking existing session:', error);
+        return false;
+    }
+}
 
 // --- Modal Definitions ---
 let uploadModal, loginModal, registerModal, langPopup;
@@ -141,9 +201,15 @@ function initializeModals() {
 // Try to initialize immediately if DOM is ready
 if (document.readyState === 'loading') {
     // DOM is still loading, wait for DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', async () => {
+        initializeModals();
+        await checkExistingSession();
+    });
 } else {
     // DOM is already loaded, initialize now
     initializeModals();
+    // Check for existing session asynchronously
+    checkExistingSession();
 }
 
 // --- Core Modal Handling Functions ---
@@ -246,7 +312,7 @@ function saveUser(userData) {
     localStorage.setItem('notehive_users', JSON.stringify(users));
 }
 
-async function findUser(emailOrUsername, password) {
+async function findUser(email, password) {
     try {
         const response = await fetch('http://localhost:3000/api/users/login', {
             method: 'POST',
@@ -254,7 +320,7 @@ async function findUser(emailOrUsername, password) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                email: emailOrUsername, // or username: emailOrUsername
+                email: email,
                 password: password
             })
         });
@@ -272,15 +338,26 @@ async function findUser(emailOrUsername, password) {
 }
 
 async function loginUser() {
-    const emailOrUsername = document.getElementById("login-email").value.trim();
+    // Check if already logged in
+    if (isUserLoggedIn) {
+        const errorDiv = document.getElementById("login-error");
+        if (errorDiv) {
+            errorDiv.textContent = "You are already logged in.";
+            errorDiv.style.display = 'block';
+        }
+        closeLoginModal();
+        return;
+    }
+
+    const email = document.getElementById("login-email").value.trim();
     const password = document.getElementById("login-password").value;
     const errorDiv = document.getElementById("login-error");
 
     errorDiv.style.display = 'none';
     errorDiv.textContent = '';
 
-    if (!emailOrUsername || !password) {
-        errorDiv.textContent = "Please enter both email/username and password.";
+    if (!email || !password) {
+        errorDiv.textContent = "Please enter both email and password.";
         errorDiv.style.display = 'block';
         return;
     }
@@ -305,7 +382,7 @@ async function loginUser() {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                email: emailOrUsername,
+                email: email,
                 password: password
             })
         });
@@ -444,18 +521,26 @@ async function registerUser() {
     
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     const registerBtn = document.getElementById("registerBtn");
     if (registerBtn) registerBtn.addEventListener("click", registerUser);
+    
+    // Check for existing session on page load
+    await checkExistingSession();
 });
 
 
 
 function logout() {
     isUserLoggedIn = false;
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     localStorage.removeItem('notehive_current_user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     alert("You have been successfully logged out.");
-
+    // Optionally reload the page to reset UI state
+    window.location.reload();
 }
 
 

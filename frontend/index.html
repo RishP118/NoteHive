@@ -50,7 +50,7 @@
     .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#1a2433;color:#93c5fd;font-weight:600;font-size:12px;border:1px solid #1f2d44}
     .primary{background:var(--blue);color:#fff;border-color:transparent}
 
-    /* Quick actions */
+    /* Quick actions  */
     .quick-grid{margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .qa{border:1px solid var(--line);border-radius:14px;padding:14px;background:#20232a;display:flex;gap:10px;align-items:center;transition:box-shadow .2s, transform .1s;cursor:pointer}
     .qa:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
@@ -566,14 +566,22 @@
         }
 
         const notes = data.data.notes || [];
+        
+        // Filter out drafts - exclude notes with "(Draft)" in title or isPublic === false
+        const uploadedNotes = notes.filter(note => {
+          const title = note.title || '';
+          const isDraft = title.includes('(Draft)') || note.isPublic === false;
+          return !isDraft;
+        });
+        
         notesList.innerHTML = "";
 
-        if (!notes.length) {
+        if (!uploadedNotes.length) {
           notesList.innerHTML = "<div class='muted'>No notes uploaded yet.</div>";
           return;
         }
 
-        notes.forEach(note => {
+        uploadedNotes.forEach(note => {
           const row = document.createElement("div");
           row.className = "list-row";
           row.dataset.noteId = note._id;
@@ -650,44 +658,48 @@
           if (data.success && data.data.note) {
             const note = data.data.note;
             console.log('Note data:', note);
-            const attachment = note.attachments && note.attachments[0];
+            const attachment = note.attachments && note.attachments.length > 0 ? note.attachments[0] : null;
             console.log('Attachment:', attachment);
             
             // The fileId should be populated as a full File object
             const file = attachment?.fileId;
             console.log('File object:', file);
+            console.log('File object type:', typeof file);
+            console.log('File object keys:', file ? Object.keys(file) : 'No file');
             
             const filename = file?.originalName || file?.filename || attachment?.filename || "file";
             
             // Construct full file URL - file.url is relative like /uploads/filename
             let fileUrl = null;
-            if (file && file.url) {
+            if (file && typeof file === 'object' && file.url) {
               // If URL is relative, prepend API_BASE_URL
               fileUrl = file.url.startsWith('http') ? file.url : `${API_BASE_URL}${file.url}`;
-              console.log('Constructed file URL:', fileUrl);
-            } else if (file && file.filename) {
+              console.log('Constructed file URL from file.url:', fileUrl);
+            } else if (file && typeof file === 'object' && file.filename) {
               // Fallback: construct URL from filename
               fileUrl = `${API_BASE_URL}/uploads/${file.filename}`;
-              console.log('Fallback file URL:', fileUrl);
+              console.log('Fallback file URL from file.filename:', fileUrl);
             } else if (attachment?.filename) {
               // Last resort: use attachment filename
               fileUrl = `${API_BASE_URL}/uploads/${attachment.filename}`;
-              console.log('Last resort file URL:', fileUrl);
+              console.log('Last resort file URL from attachment.filename:', fileUrl);
+            } else if (attachment?.fileId && typeof attachment.fileId === 'string') {
+              // If fileId is just a string ID, we need to fetch the file separately
+              console.log('fileId is a string, need to fetch file:', attachment.fileId);
+              // Try to construct URL from fileId (this won't work, but helps debug)
+              fileUrl = null;
             }
+            
+            console.log('Final fileUrl:', fileUrl);
 
             // Check if note has content (published from editor) or file attachment
             const noteContent = note.content || "";
             const hasContent = noteContent.trim() && noteContent !== " ";
             
             if (fileUrl) {
-              // Note has file attachment - show file preview
-              openModal(title,
-                `<div style='margin-bottom:12px;'>
-                  <a href='${fileUrl}' target='_blank' style='color:var(--blue);text-decoration:underline;font-weight:bold;'>${filename}</a>
-                </div>
-                <iframe src='${fileUrl}' style='width:100%;height:70vh;border-radius:8px;border:1px solid var(--line)'></iframe>`,
-                `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`
-              );
+              // Open the PDF/file in a new tab immediately
+              window.open(fileUrl, '_blank', 'noopener');
+              return;
             } else if (hasContent) {
               // Note has content (published from editor) - show content
               openModal(title,
@@ -697,16 +709,8 @@
                 `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`
               );
             } else {
-              console.error('File URL not found. Full note data:', JSON.stringify(note, null, 2));
               openModal(title, 
-                `<p class='muted'>No preview available for this note.</p>
-                <p class='muted' style='font-size:12px;margin-top:8px;'>
-                  Debug info:<br>
-                  Has attachments: ${note.attachments ? note.attachments.length : 0}<br>
-                  Has file: ${file ? 'Yes' : 'No'}<br>
-                  Has content: ${hasContent ? 'Yes' : 'No'}<br>
-                  File keys: ${file ? Object.keys(file).join(', ') : 'N/A'}
-                </p>`, 
+                `<p class='muted'>This note was saved without an attachment or published content. Ask the author to upload the file again.</p>`, 
                 `<button class='btn btn-blue' id='open-close'><i data-feather='check'></i> Close</button>`
               );
             }

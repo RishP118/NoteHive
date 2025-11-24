@@ -1,23 +1,34 @@
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { validationResult } from 'express-validator';
 import * as settings from '../config/settings.js';
 
 // @desc    Register new user
 export const registerUser = async (req, res) => {
   try {
-    const { name, username, email, password, role } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: errors.array()[0].msg });
+    }
 
-    if (!name || !username || !email || !password || !role)
+    const { name, username, email, password, role } = req.body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
+
+    if (!name || !username || !normalizedEmail || !password || !role)
       return res.status(400).json({ message: 'Please fill all fields' });
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) return res.status(400).json({ message: 'Email already in use' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name, username, email, password: hashedPassword, role
+      name,
+      username,
+      email: normalizedEmail,
+      password: hashedPassword,
+      role
     });
 
     const token = jwt.sign(
@@ -41,16 +52,30 @@ export const registerUser = async (req, res) => {
 // @desc    Login user
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({ message: errors.array()[0].msg });
+    }
 
-    if (!email || !password)
+    const { email, password } = req.body;
+    console.log('Login attempt - email:', email ? email.substring(0, 3) + '***' : 'missing');
+    const normalizedEmail = (email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || !password)
       return res.status(400).json({ message: 'Please provide email and password' });
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      console.log('User not found for email:', normalizedEmail);
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+    if (!isMatch) {
+      console.log('Password mismatch for user:', normalizedEmail);
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

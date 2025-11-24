@@ -6,7 +6,7 @@ export const createNote = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
-    const { title, content, tags, subject, isPublic, studyGroupId } = req.body;
+    const { title, content, tags, subject, isPublic, studyGroupId, attachments } = req.body;
 
     const note = await Note.create({
       title,
@@ -16,8 +16,12 @@ export const createNote = async (req, res) => {
       isPublic: isPublic !== undefined ? isPublic : false, // Use provided value, default to false 
       userId: req.user.id,
       studyGroupId: studyGroupId || null,
-      lastEditedBy: req.user.id
+      lastEditedBy: req.user.id,
+      attachments: attachments || [] // Save attachments array
     });
+
+    // Populate attachments to return full file data
+    await note.populate('attachments.fileId');
 
     res.status(201).json({ success: true, data: { note } });
   } catch (error) {
@@ -45,6 +49,7 @@ export const getNotes = async (req, res) => {
     const notes = await Note.find(query)
       .populate('userId', 'username email profile')
       .populate('lastEditedBy', 'username')
+      .populate('attachments.fileId')
       .sort(search ? { score: { $meta: 'textScore' } } : { createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
